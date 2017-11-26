@@ -1,10 +1,14 @@
+# -*- coding: utf-8 -*-
 """
 /***************************************************************************
-Name			 	 : Tachy2Gis
-Description          : Allows to enter shapes directly via a connected tachymeter
-Date                 : 26/Nov/17 
-copyright            : (C) 2017 by Christian Trapp
-email                : mail@christiantrapp.net 
+ Tachy2Gis
+                                 A QGIS plugin
+ This plugin allows to create geometries directly with a connected tachymeter
+                             -------------------
+        begin                : 2017-11-26
+        copyright            : (C) 2017 by Christian Trapp
+        email                : mail@christiantrapp.net
+        git sha              : $Format:%H$
  ***************************************************************************/
 
 /***************************************************************************
@@ -15,13 +19,17 @@ email                : mail@christiantrapp.net
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+ This script initializes the plugin, making it known to QGIS.
 """
-from PyQt4 import QtCore, QtGui 
-from Ui_Tachy2GIS import Ui_Tachy2GIS
-# create the dialog for Tachy2GIS
-class Tachy2GISDialog(QtGui.QDialog):
-  def __init__(self): 
-    QtGui.QDialog.__init__(self) 
-    # Set up the user interface from Designer. 
-    self.ui = Ui_Tachy2GIS ()
-    self.ui.setupUi(self)
+
+
+# noinspection PyPep8Naming
+def classFactory(iface):  # pylint: disable=invalid-name
+    """Load Tachy2Gis class from file Tachy2Gis.
+
+    :param iface: A QGIS interface instance.
+    :type iface: QgsInterface
+    """
+    #
+    from .Tachy2GIS import Tachy2Gis
+    return Tachy2Gis(iface)

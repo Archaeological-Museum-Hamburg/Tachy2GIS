@@ -1,10 +1,10 @@
 <ui version="4.0" >
- <class>Tachy2GIS</class>
- <widget class="QDialog" name="Tachy2GIS" >
+ <class>Tachy2GisDialogBase</class>
+ <widget class="QDialog" name="Tachy2GisDialogBase" >
   <property name="geometry" >
    <rect>
-    <x>200</x>
-    <y>200</y>
+    <x>0</x>
+    <y>0</y>
     <width>400</width>
     <height>300</height>
    </rect>
@@ -12,7 +12,7 @@
   <property name="windowTitle" >
    <string>Tachy2GIS</string>
   </property>
-  <widget class="QDialogButtonBox" name="buttonBox" >
+  <widget class="QDialogButtonBox" name="button_box" >
    <property name="geometry" >
     <rect>
      <x>30</x>
@@ -32,32 +32,32 @@
  <resources/>
  <connections>
   <connection>
-   <sender>buttonBox</sender>
+   <sender>button_box</sender>
    <signal>accepted()</signal>
-   <receiver>Tachy2GIS</receiver>
+   <receiver>Tachy2GisDialogBase</receiver>
    <slot>accept()</slot>
    <hints>
-    <hint type="sourcelabel" >
+    <hint type="source_label" >
      <x>248</x>
      <y>254</y>
     </hint>
-    <hint type="destinationlabel" >
+    <hint type="destination_label" >
      <x>157</x>
      <y>274</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>buttonBox</sender>
+   <sender>button_box</sender>
    <signal>rejected()</signal>
-   <receiver>Tachy2GIS</receiver>
+   <receiver>Tachy2GisDialogBase</receiver>
    <slot>reject()</slot>
    <hints>
-    <hint type="sourcelabel" >
+    <hint type="source_label" >
      <x>316</x>
      <y>260</y>
     </hint>
-    <hint type="destinationlabel" >
+    <hint type="destination_label" >
      <x>286</x>
      <y>274</y>
     </hint>

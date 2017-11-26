@@ -1,5 +1,0 @@
-<RCC> 
-  <qresource prefix="/plugins/Tachy2GIS" > 
-    <file>icon.png</file> 
-  </qresource> 
-</RCC> 
