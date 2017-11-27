@@ -30,6 +30,7 @@ import os.path
 from qgis.utils import iface
 from qgis.gui import QgsVertexMarker
 from qgis.core import QgsPoint
+from pointProvider import PointProvider
 
 
 class Tachy2Gis:
@@ -39,10 +40,23 @@ class Tachy2Gis:
     def drawPoint(self):
         canvas = self.iface.mapCanvas()
         marker = QgsVertexMarker(canvas)
-        marker.setCenter(QgsPoint(10, 10))
-        pass
+        marker.setCenter(QgsPoint(*self.pointProvider.getPoint()))
     
-    # Inteface code goes here:
+    def clearCanvas(self):
+        canvas = self.iface.mapCanvas()
+        items = canvas.items()
+        for item in items:
+            if isinstance(item, QgsVertexMarker):
+                canvas.scene().removeItem(item)
+        pass
+
+    
+    # Interface code goes here:
+    def connectControls(self):
+        """This method connects all control in the UI to their callbacks"""
+        self.dlg.pushButton.clicked.connect(self.drawPoint)
+        self.dlg.clearButton.clicked.connect(self.clearCanvas)
+        
 
     def __init__(self, iface):
         """Constructor.
@@ -77,6 +91,9 @@ class Tachy2Gis:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'Tachy2Gis')
         self.toolbar.setObjectName(u'Tachy2Gis')
+        
+        ## From here: Own additions
+        self.pointProvider = PointProvider()
         
         
         
@@ -197,11 +214,13 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
+        self.connectControls()
+        
         layers = self.iface.legendInterface().layers()
         ll = [layer.name() for layer in layers]
         self.dlg.layerList.clear()
         self.dlg.layerList.addItems(ll)
-        self.dlg.pushButton.clicked.connect(self.drawPoint)
+        
 
         # show the dialog
         self.dlg.show()
