@@ -27,10 +27,22 @@ import resources
 # Import the code for the dialog
 from Tachy2GIS_dialog import Tachy2GisDialog
 import os.path
+from qgis.utils import iface
+from qgis.gui import QgsVertexMarker
+from qgis.core import QgsPoint
 
 
 class Tachy2Gis:
     """QGIS Plugin Implementation."""
+    # Custom methods go here:
+    
+    def drawPoint(self):
+        canvas = self.iface.mapCanvas()
+        marker = QgsVertexMarker(canvas)
+        marker.setCenter(QgsPoint(10, 10))
+        pass
+    
+    # Inteface code goes here:
 
     def __init__(self, iface):
         """Constructor.
@@ -65,6 +77,9 @@ class Tachy2Gis:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'Tachy2Gis')
         self.toolbar.setObjectName(u'Tachy2Gis')
+        
+        
+        
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -147,7 +162,7 @@ class Tachy2Gis:
             action.setWhatsThis(whats_this)
 
         if add_to_toolbar:
-            self.toolbar.addAction(action)
+            self.iface.addToolBarIcon(action)
 
         if add_to_menu:
             self.iface.addPluginToMenu(
@@ -182,6 +197,12 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
+        layers = self.iface.legendInterface().layers()
+        ll = [layer.name() for layer in layers]
+        self.dlg.layerList.clear()
+        self.dlg.layerList.addItems(ll)
+        self.dlg.pushButton.clicked.connect(self.drawPoint)
+
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
