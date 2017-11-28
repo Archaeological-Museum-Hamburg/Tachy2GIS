@@ -31,7 +31,7 @@ from qgis.utils import iface
 from qgis.gui import QgsVertexMarker
 from qgis.core import QgsPoint
 from pointProvider import PointProvider
-
+from T2G_PolyPainter import T2G_PolyPainter
 
 class Tachy2Gis:
     """QGIS Plugin Implementation."""
@@ -56,6 +56,7 @@ class Tachy2Gis:
         """This method connects all control in the UI to their callbacks"""
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
+        #self.iface.mapCanvas().clicked.connect(self.clearCanvas)
         
 
     def __init__(self, iface):
@@ -94,7 +95,7 @@ class Tachy2Gis:
         
         ## From here: Own additions
         self.pointProvider = PointProvider()
-        
+        self.mapTool = T2G_PolyPainter(self.iface)
         
         
 
@@ -215,11 +216,12 @@ class Tachy2Gis:
     def run(self):
         """Run method that performs all the real work"""
         self.connectControls()
+        self.iface.mapCanvas().setMapTool(self.mapTool)
         
         layers = self.iface.legendInterface().layers()
         ll = [layer.name() for layer in layers]
-        self.dlg.layerList.clear()
-        self.dlg.layerList.addItems(ll)
+        #self.dlg.layerList.clear()
+        #self.dlg.layerList.addItems(ll)
         
 
         # show the dialog
