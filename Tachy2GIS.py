@@ -40,7 +40,9 @@ class Tachy2Gis:
     def drawPoint(self):
         canvas = self.iface.mapCanvas()
         marker = QgsVertexMarker(canvas)
-        marker.setCenter(QgsPoint(*self.pointProvider.getPoint()))
+        x, y = self.pointProvider.getPoint()
+        marker.setCenter(QgsPoint(x, y))
+        self.mapTool.addVertex(x, y, None, 'Ext.')
     
     def clearCanvas(self):
         canvas = self.iface.mapCanvas()
@@ -56,7 +58,8 @@ class Tachy2Gis:
         """This method connects all control in the UI to their callbacks"""
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
-        #self.iface.mapCanvas().clicked.connect(self.clearCanvas)
+        self.iface.mapCanvas().setMapTool(self.mapTool)
+        self.dlg.vertexTableView.setModel(self.mapTool.vertexTableModel)
         
 
     def __init__(self, iface):
@@ -216,7 +219,6 @@ class Tachy2Gis:
     def run(self):
         """Run method that performs all the real work"""
         self.connectControls()
-        self.iface.mapCanvas().setMapTool(self.mapTool)
         
         layers = self.iface.legendInterface().layers()
         ll = [layer.name() for layer in layers]
