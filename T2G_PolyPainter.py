@@ -21,8 +21,9 @@ class T2Gvertex():
         self.fields = [self.label,
                        self.source,
                        self.x,
-                       self.y,
+                       self.y,                       
                        self.z]
+        self.headers = ['#', 'Source', 'x', 'y', 'z']
         
     def getQpoint(self):
         return QgsPoint(self.x, self.y)
@@ -79,21 +80,27 @@ class VertexTableModel(QAbstractTableModel):
         return self.columnCount
     
     def data(self, index, role):
+        if Qt is None:
+            return
         if not index.isValid():
             return
         elif role != Qt.DisplayRole:
             return
-        return self.vertices[index.row()].fields[index.column()]
+        row = index.row()
+        col = index.column()
+        vertex = self.vertices[row]
+        field = vertex.fields[col]
+        return field
     
     def addVertex(self, vertex):
         self.vertices.append(vertex)
         self.layoutChanged.emit()
     
     def headerData(self, section, orientation, role):
+        if Qt is None:
+            return
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            headers = ['#',
-                       'Source',
-                       'x', 'y', 'z']
+            headers = T2Gvertex().headers
             return headers[section]
         return QAbstractTableModel.headerData(self, section, orientation, role)
         #return QVariant()
@@ -117,7 +124,7 @@ class T2G_PolyPainter(QgsMapTool):
         self.rubberBand.reset(QGis.Polygon)
         
     def addVertex(self, x, y, z = None, source = None):
-        vertex = T2Gvertex(None, x, y, z, source)
+        vertex = T2Gvertex(None, source, x, y, z)
         self.vertexTableModel.addVertex(vertex)
         
         
@@ -127,6 +134,7 @@ class T2G_PolyPainter(QgsMapTool):
         point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         marker = QgsVertexMarker(self.canvas)
         marker.setCenter(point)
+        self.addVertex(point.x(), point.y(), None, 'Mouse')
         
 if __name__ == "__main__":
     def printColors(vertexList):
