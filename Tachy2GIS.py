@@ -59,6 +59,12 @@ class Tachy2Gis:
         if self.previousTool is None:
             self.previousTool = QgsMapToolPan(self.iface.mapCanvas())
         self.iface.mapCanvas().setMapTool(self.previousTool)
+    
+    def setDumpEnabled(self):
+        layerEditable = self.dlg.mapLayerComboBox.currentLayer().isEditable()
+        vertices = len(self.vertices) > 0
+        layerEditable = True
+        self.dlg.dumpButton.setEnabled(layerEditable and vertices)
 
     
     # Interface code goes here:
@@ -75,8 +81,11 @@ class Tachy2Gis:
         self.dlg.accepted.connect(self.restoreTool)
         self.dlg.rejected.connect(self.restoreTool)
         
-        self.dlg.mapLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
-        
+        self.dlg.mapLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
+        self.dlg.mapLayerComboBox.layerChanged.connect(self.setDumpEnabled)
+        self.vertexTableModel.layoutChanged.connect(self.setDumpEnabled)
+        self.setDumpEnabled()
+    
 
     def __init__(self, iface):
         """Constructor.
