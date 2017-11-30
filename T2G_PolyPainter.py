@@ -91,6 +91,7 @@ class T2G_VertexList():
     
     def clear(self):
         self.vertices = []
+        self.refreshIndex()
 
 class T2G_VertexTableModel(QAbstractTableModel):
     def __init__(self, vertexList, parent = None, *args):
@@ -149,29 +150,23 @@ class T2G_PolyPainter(QgsMapTool):
         self.rubberBand.setColor(self.RB_COLOR)
         self.rubberBand.setFillColor(self.RB_FILLCOLOR)
         self.rubberBand.setWidth(1)
-        self.elements = [self.rubberBand]
+        self.elements = []
         self.reset()
     
     def reset(self):
         self.rubberBand.reset(QGis.Polygon)
     
-    def setRubberBandVisibiliy(self):
-        if len(self.vertices) > 1:
-            self.rubberBand.show()
-        else:
-            self.rubberBand.hide()
-        
         
     def addVertex(self, label = None, source = None, x = None, y = None, z = None):
         vertex = T2G_Vertex(label, source, x, y, z)
         self.rubberBand.addPoint(vertex.getQpoint(), True)
-        self.setRubberBandVisibiliy()
         self.tableModel.addVertex(vertex)
         self.elements.append(vertex.getMarker(self.canvas))
     
     def clear(self):
-        for element in self.elements:
+        for element in self.elements[1:]:
             self.canvas.scene().removeItem(element)
+        self.reset()
         self.tableModel.clear()
         
         
@@ -181,6 +176,16 @@ class T2G_PolyPainter(QgsMapTool):
         point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         
         self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)
+    
+    """
+    def activate(self, *args, **kwargs):
+        super(T2G_PolyPainter, self).activate()
+        
+    def deativate(self):
+        self.clear()
+        super(T2G_PolyPainter, self).deactivate()
+        self.emit(SIGNAL("deactivated()"))
+    """
         
 if __name__ == "__main__":
     def printColors(vertexList):

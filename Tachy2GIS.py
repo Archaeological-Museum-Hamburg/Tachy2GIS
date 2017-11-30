@@ -44,6 +44,11 @@ class Tachy2Gis:
     
     def clearCanvas(self):
         self.mapTool.clear()
+    
+    def restoreTool(self):
+        if self.previousTool is None:
+            self.previousTool = QgsMapToolPan(self.iface.mapCanvas())
+        self.iface.mapCanvas().setMapTool(self.previousTool)
 
     
     # Interface code goes here:
@@ -51,8 +56,10 @@ class Tachy2Gis:
         """This method connects all control in the UI to their callbacks"""
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
-        self.iface.mapCanvas().setMapTool(self.mapTool)
+        self.dlg.finished.connect(self.mapTool.clear)
+        
         self.dlg.vertexTableView.setModel(self.vertexTableModel)
+        self.dlg.finished.connect(self.restoreTool)
         
 
     def __init__(self, iface):
@@ -94,7 +101,8 @@ class Tachy2Gis:
         self.vertices = T2G_VertexList()
         self.vertexTableModel = T2G_VertexTableModel(self.vertices)
         self.mapTool = T2G_PolyPainter(self.iface, self.vertexTableModel)
-        
+        self.previousTool = None
+       
         
 
     # noinspection PyMethodMayBeStatic
@@ -165,6 +173,7 @@ class Tachy2Gis:
 
         # Create the dialog (after translation) and keep reference
         self.dlg = Tachy2GisDialog()
+        self.connectControls()
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
@@ -213,7 +222,6 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
-        self.connectControls()
         
         layers = self.iface.legendInterface().layers()
         ll = [layer.name() for layer in layers]
@@ -222,11 +230,17 @@ class Tachy2Gis:
         
 
         # show the dialog
+        self.previousTool = self.iface.mapCanvas().mapTool()
+        self.iface.mapCanvas().setMapTool(self.mapTool)
         self.dlg.show()
+
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
+            
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+        
+        

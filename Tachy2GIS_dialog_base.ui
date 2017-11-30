@@ -116,7 +116,14 @@
     </layout>
    </item>
    <item row="6" column="0">
-    <widget class="QTableView" name="vertexTableView"/>
+    <widget class="QTableView" name="vertexTableView">
+     <property name="selectionMode">
+      <enum>QAbstractItemView::SingleSelection</enum>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
