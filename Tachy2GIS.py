@@ -31,8 +31,8 @@ from qgis.utils import iface
 from qgis.gui import QgsVertexMarker
 from qgis.core import QgsPoint
 from pointProvider import PointProvider
-from T2G_PolyPainter import T2G_PolyPainter
-from T2G_PolyPainter import T2Gvertex
+from T2G_PolyPainter import *
+
 
 class Tachy2Gis:
     """QGIS Plugin Implementation."""
@@ -40,7 +40,7 @@ class Tachy2Gis:
     
     def drawPoint(self):
         x, y = self.pointProvider.getPoint()
-        self.mapTool.addVertex(None, T2Gvertex.SOURCE_EXTERNAL, x, y, None)
+        self.mapTool.addVertex(None, T2G_Vertex.SOURCE_EXTERNAL, x, y, None)
     
     def clearCanvas(self):
         self.mapTool.clear()
@@ -52,7 +52,7 @@ class Tachy2Gis:
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
         self.iface.mapCanvas().setMapTool(self.mapTool)
-        self.dlg.vertexTableView.setModel(self.mapTool.vertexTableModel)
+        self.dlg.vertexTableView.setModel(self.vertexTableModel)
         
 
     def __init__(self, iface):
@@ -91,7 +91,9 @@ class Tachy2Gis:
         
         ## From here: Own additions
         self.pointProvider = PointProvider()
-        self.mapTool = T2G_PolyPainter(self.iface)
+        self.vertices = T2G_VertexList()
+        self.vertexTableModel = T2G_VertexTableModel(self.vertices)
+        self.mapTool = T2G_PolyPainter(self.iface, self.vertexTableModel)
         
         
 

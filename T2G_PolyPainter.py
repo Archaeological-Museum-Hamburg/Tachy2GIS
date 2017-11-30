@@ -11,7 +11,7 @@ from docutils.parsers.rst.roles import role
 
 
 
-class T2Gvertex():
+class T2G_Vertex():
     SOURCE_INTERNAL = 'Man.'
     SOURCE_EXTERNAL = 'Ext.'
     SHAPE_INTERNAL = QgsVertexMarker.ICON_BOX
@@ -41,7 +41,7 @@ class T2Gvertex():
         marker.setIconType(self.SHAPE_MAP[self.source])
         return marker
     
-class T2GvertexList():
+class T2G_VertexList():
     VERTEX_COLOR = QColor(0, 255, 0)
     SELECTED_COLOR = QColor(255, 0, 0)
     
@@ -83,7 +83,7 @@ class T2GvertexList():
     def getShapes(self):
         shapes = []
         for vertex in self.vertices:
-            if vertex.source == T2Gvertex.SOURCE_EXTERNAL:
+            if vertex.source == T2G_Vertex.SOURCE_EXTERNAL:
                 shapes.append(self.SHAPE_EXTERNAL)
             else:
                 shapes.appen(self.SHAPE_INTERNAL)
@@ -92,10 +92,10 @@ class T2GvertexList():
     def clear(self):
         self.vertices = []
 
-class VertexTableModel(QAbstractTableModel):
+class T2G_VertexTableModel(QAbstractTableModel):
     def __init__(self, vertexList, parent = None, *args):
         QAbstractTableModel.__init__(self, parent, *args)
-        self.columnCount = len(T2Gvertex().fields)
+        self.columnCount = len(T2G_Vertex().fields)
         self.vertices = vertexList
 
     def rowCount(self, *args, **kwargs):
@@ -125,7 +125,7 @@ class VertexTableModel(QAbstractTableModel):
         if Qt is None:
             return
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            headers = T2Gvertex().headers
+            headers = T2G_Vertex().headers
             return headers[section]
         return QAbstractTableModel.headerData(self, section, orientation, role)
     
@@ -137,15 +137,14 @@ class VertexTableModel(QAbstractTableModel):
 class T2G_PolyPainter(QgsMapTool):
     RB_COLOR = Qt.red
     RB_FILLCOLOR = QColor(255, 0, 0, 127)
-    def __init__(self, iface):
+    def __init__(self, iface, tableModel):
         QgsMapTool.__init__(self, iface.mapCanvas())
     
         self.canvas = iface.mapCanvas()
         #self.emitPoint = QgsMapToolEmitPoint(self.canvas)
         self.iface = iface
-        self.vertices = T2GvertexList()
-        self.vertexTableModel = VertexTableModel(self.vertices)
-        
+        self.tableModel = tableModel
+        self.vertices = self.tableModel.vertices
         self.rubberBand = QgsRubberBand(self.canvas, QGis.Polygon)
         self.rubberBand.setColor(self.RB_COLOR)
         self.rubberBand.setFillColor(self.RB_FILLCOLOR)
@@ -164,16 +163,16 @@ class T2G_PolyPainter(QgsMapTool):
         
         
     def addVertex(self, label = None, source = None, x = None, y = None, z = None):
-        vertex = T2Gvertex(label, source, x, y, z)
+        vertex = T2G_Vertex(label, source, x, y, z)
         self.rubberBand.addPoint(vertex.getQpoint(), True)
         self.setRubberBandVisibiliy()
-        self.vertexTableModel.addVertex(vertex)
+        self.tableModel.addVertex(vertex)
         self.elements.append(vertex.getMarker(self.canvas))
     
     def clear(self):
         for element in self.elements:
             self.canvas.scene().removeItem(element)
-        self.vertexTableModel.clear()
+        self.tableModel.clear()
         
         
     def canvasReleaseEvent(self, event):
@@ -181,7 +180,7 @@ class T2G_PolyPainter(QgsMapTool):
         y = event.pos().y()
         point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         
-        self.addVertex(None, T2Gvertex.SOURCE_INTERNAL, point.x(), point.y(), None)
+        self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)
         
 if __name__ == "__main__":
     def printColors(vertexList):
@@ -189,9 +188,9 @@ if __name__ == "__main__":
         for c in colors:
             print c.red(), c.green(), c.blue()
     
-    vl = T2GvertexList()
-    vl.append(T2Gvertex())
-    vl.append(T2Gvertex(1, 2, 3))
+    vl = T2G_VertexList()
+    vl.append(T2G_Vertex())
+    vl.append(T2G_Vertex(1, 2, 3))
     vl.select(1)
     printColors(vl)
     vl.clearSelection()
