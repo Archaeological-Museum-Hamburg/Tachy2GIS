@@ -34,6 +34,9 @@ class T2Gvertex():
 class T2GvertexList():
     VERTEX_COLOR = QColor(0, 255, 0)
     SELECTED_COLOR = QColor(255, 0, 0)
+    MOUSE_SHAPE = QgsVertexMarker.ICON_BOX
+    EXT_SHAPE =QgsVertexMarker.ICON_X
+    
     def __init__(self, vertices = []):
         self.vertices = vertices
         self.colors = []
@@ -123,8 +126,8 @@ class T2G_PolyPainter(QgsMapTool):
     def reset(self):
         self.rubberBand.reset(QGis.Polygon)
         
-    def addVertex(self, x, y, z = None, source = None):
-        vertex = T2Gvertex(None, source, x, y, z)
+    def addVertex(self, label = None, source = None, x = None, y = None, z = None):
+        vertex = T2Gvertex(label, source, x, y, z)
         self.vertexTableModel.addVertex(vertex)
         
         
