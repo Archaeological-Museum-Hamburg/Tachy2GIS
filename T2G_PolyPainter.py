@@ -12,6 +12,8 @@ from docutils.parsers.rst.roles import role
 
 
 class T2Gvertex():
+    SOURCE_INTERNAL = 'Man.'
+    SOURCE_EXTERNAL = 'Ext.'
     def __init__(self, label = None, source = None, x = None, y = None, z = None):
         self.label = str(label)
         self.source = source
@@ -34,12 +36,13 @@ class T2Gvertex():
 class T2GvertexList():
     VERTEX_COLOR = QColor(0, 255, 0)
     SELECTED_COLOR = QColor(255, 0, 0)
-    MOUSE_SHAPE = QgsVertexMarker.ICON_BOX
-    EXT_SHAPE =QgsVertexMarker.ICON_X
+    SHAPE_INTERNAL = QgsVertexMarker.ICON_BOX
+    SHAPE_EXTERNAL =QgsVertexMarker.ICON_X
     
     def __init__(self, vertices = []):
         self.vertices = vertices
         self.colors = []
+        self.shapes = []
         self.selected = None
         self.maxIndex = None
     
@@ -69,6 +72,15 @@ class T2GvertexList():
         if self.selected:
             colors[self.selected] = self.SELECTED_COLOR
         return colors
+    
+    def getShapes(self):
+        shapes = []
+        for vertex in self.vertices:
+            if vertex.source == T2Gvertex.SOURCE_EXTERNAL:
+                shapes.append(self.SHAPE_EXTERNAL)
+            else:
+                shapes.appen(self.SHAPE_INTERNAL)
+        return shapes
 
 class VertexTableModel(QAbstractTableModel):
     def __init__(self, vertexList, parent = None, *args):
@@ -137,7 +149,7 @@ class T2G_PolyPainter(QgsMapTool):
         point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         marker = QgsVertexMarker(self.canvas)
         marker.setCenter(point)
-        self.addVertex(point.x(), point.y(), None, 'Mouse')
+        self.addVertex(None, T2Gvertex.SOURCE_INTERNAL, point.x(), point.y(), None)
         
 if __name__ == "__main__":
     def printColors(vertexList):

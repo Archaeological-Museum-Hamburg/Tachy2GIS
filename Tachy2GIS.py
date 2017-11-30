@@ -32,6 +32,7 @@ from qgis.gui import QgsVertexMarker
 from qgis.core import QgsPoint
 from pointProvider import PointProvider
 from T2G_PolyPainter import T2G_PolyPainter
+from T2G_PolyPainter import T2Gvertex
 
 class Tachy2Gis:
     """QGIS Plugin Implementation."""
@@ -42,7 +43,7 @@ class Tachy2Gis:
         marker = QgsVertexMarker(canvas)
         x, y = self.pointProvider.getPoint()
         marker.setCenter(QgsPoint(x, y))
-        self.mapTool.addVertex(x, y, None, 'Ext.')
+        self.mapTool.addVertex(None, T2Gvertex.SOURCE_EXTERNAL, x, y, None)
     
     def clearCanvas(self):
         canvas = self.iface.mapCanvas()
