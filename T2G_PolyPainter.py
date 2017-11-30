@@ -59,8 +59,8 @@ class T2G_VertexList():
     def __len__(self):
         return self.vertices.__len__()
     
-    def __getitem__(self, key):
-        return self.vertices[key]
+    def __getitem__(self, index):
+        return self.vertices.__getitem__(index)
     
     def append(self, vertex):
         self.vertices.append(vertex)
@@ -150,22 +150,23 @@ class T2G_PolyPainter(QgsMapTool):
         self.rubberBand.setColor(self.RB_COLOR)
         self.rubberBand.setFillColor(self.RB_FILLCOLOR)
         self.rubberBand.setWidth(1)
-        self.elements = []
+        self.markers = []
         self.reset()
     
     def reset(self):
         self.rubberBand.reset(QGis.Polygon)
+        self.markers = []
     
         
     def addVertex(self, label = None, source = None, x = None, y = None, z = None):
         vertex = T2G_Vertex(label, source, x, y, z)
         self.rubberBand.addPoint(vertex.getQpoint(), True)
         self.tableModel.addVertex(vertex)
-        self.elements.append(vertex.getMarker(self.canvas))
+        self.markers.append(vertex.getMarker(self.canvas))
     
     def clear(self):
-        for element in self.elements[1:]:
-            self.canvas.scene().removeItem(element)
+        for marker in self.markers:
+            self.canvas.scene().removeItem(marker)
         self.reset()
         self.tableModel.clear()
         

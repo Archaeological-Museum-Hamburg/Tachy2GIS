@@ -28,8 +28,6 @@ import resources
 from Tachy2GIS_dialog import Tachy2GisDialog
 import os.path
 from qgis.utils import iface
-from qgis.gui import QgsVertexMarker
-from qgis.core import QgsPoint
 from pointProvider import PointProvider
 from T2G_PolyPainter import *
 
@@ -44,6 +42,18 @@ class Tachy2Gis:
     
     def clearCanvas(self):
         self.mapTool.clear()
+        
+    def dump(self):
+        layer = self.dlg.mapLayerComboBox.currentLayer()
+        newFeature = QgsFeature(layer.fields())
+        newFeature.setAttributes([0])
+        if layer.wkbType() == 3:
+            newFeature.setGeometry(QgsGeometry.fromPolygon([[vertex.getQpoint() for vertex in self.vertexTableModel.vertices]]))
+        
+        (result, output) = layer.dataProvider().addFeatures([newFeature])
+        if result:
+            self.mapTool.clear()
+            layer.triggerRepaint()
     
     def restoreTool(self):
         if self.previousTool is None:
@@ -52,14 +62,20 @@ class Tachy2Gis:
 
     
     # Interface code goes here:
-    def connectControls(self):
-        """This method connects all control in the UI to their callbacks"""
+    def setupControls(self):
+        """This method connects all controls in the UI to their callbacks.
+        It is called in ad_action"""
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
+        self.dlg.dumpButton.clicked.connect(self.dump)
         
         self.dlg.vertexTableView.setModel(self.vertexTableModel)
         self.dlg.finished.connect(self.restoreTool)
+        self.dlg.accepted.connect(self.restoreTool)
+        self.dlg.rejected.connect(self.restoreTool)
+        
+        self.dlg.mapLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
         
 
     def __init__(self, iface):
@@ -173,7 +189,7 @@ class Tachy2Gis:
 
         # Create the dialog (after translation) and keep reference
         self.dlg = Tachy2GisDialog()
-        self.connectControls()
+        self.setupControls()
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)

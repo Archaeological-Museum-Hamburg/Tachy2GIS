@@ -20,17 +20,30 @@
       <widget class="QLabel" name="label">
        <property name="maximumSize">
         <size>
+         <width>84</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Target layer:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QgsMapLayerComboBox" name="mapLayerComboBox"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="dumpButton">
+       <property name="maximumSize">
+        <size>
          <width>80</width>
          <height>16777215</height>
         </size>
        </property>
        <property name="text">
-        <string>Layer:</string>
+        <string>Dump</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <widget class="QgsMapLayerComboBox" name="mMapLayerComboBox"/>
      </item>
     </layout>
    </item>
@@ -60,32 +73,6 @@
    </item>
    <item row="7" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QPushButton" name="dumpButton">
-       <property name="text">
-        <string>Dump as:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="dumpType">
-       <item>
-        <property name="text">
-         <string>Polygon</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Line</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Points</string>
-        </property>
-       </item>
-      </widget>
-     </item>
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
