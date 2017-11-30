@@ -39,19 +39,11 @@ class Tachy2Gis:
     # Custom methods go here:
     
     def drawPoint(self):
-        canvas = self.iface.mapCanvas()
-        marker = QgsVertexMarker(canvas)
         x, y = self.pointProvider.getPoint()
-        marker.setCenter(QgsPoint(x, y))
         self.mapTool.addVertex(None, T2Gvertex.SOURCE_EXTERNAL, x, y, None)
     
     def clearCanvas(self):
-        canvas = self.iface.mapCanvas()
-        items = canvas.items()
-        for item in items:
-            if isinstance(item, QgsVertexMarker):
-                canvas.scene().removeItem(item)
-        pass
+        self.mapTool.clear()
 
     
     # Interface code goes here:
