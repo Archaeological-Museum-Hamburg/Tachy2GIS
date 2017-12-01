@@ -33,6 +33,7 @@ from T2G_PolyPainter import *
 
 
 class Tachy2Gis:
+    
     """QGIS Plugin Implementation."""
     # Custom methods go here:
     
@@ -61,10 +62,23 @@ class Tachy2Gis:
         self.iface.mapCanvas().setMapTool(self.previousTool)
     
     def setDumpEnabled(self):
-        layerEditable = self.dlg.mapLayerComboBox.currentLayer().isEditable()
-        vertices = len(self.vertices) > 0
-        layerEditable = True
-        self.dlg.dumpButton.setEnabled(layerEditable and vertices)
+        if self.dlg.mapLayerComboBox.currentLayer() is None:
+            return
+        activeLayer = self.dlg.mapLayerComboBox.currentLayer()
+        editable = activeLayer.isEditable()
+        readOnly = activeLayer.readOnly()
+        verticesRequired = activeLayer.wkbType()
+        sufficientVertices = len(self.vertices) >= verticesRequired
+        #editable = True
+        self.dlg.dumpButton.setEnabled(editable and sufficientVertices and not readOnly)
+    
+    def setActiveLayer(self):
+        if self.dlg.mapLayerComboBox.currentLayer() is None:
+            return
+        self.iface.setActiveLayer(self.dlg.mapLayerComboBox.currentLayer())
+    
+    def toggleEdit(self):
+        iface.actionToggleEditing().trigger()
 
     
     # Interface code goes here:
@@ -82,9 +96,14 @@ class Tachy2Gis:
         self.dlg.rejected.connect(self.restoreTool)
         
         self.dlg.mapLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
+        self.dlg.mapLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.mapLayerComboBox.layerChanged.connect(self.setDumpEnabled)
+        self.dlg.mapLayerComboBox.layerChanged.connect(self.setActiveLayer)
         self.vertexTableModel.layoutChanged.connect(self.setDumpEnabled)
         self.setDumpEnabled()
+        
+        self.dlg.writeableButton.clicked.connect(self.toggleEdit)
+        self.dlg.writeableButton.clicked.connect(self.setDumpEnabled)
     
 
     def __init__(self, iface):
@@ -257,6 +276,7 @@ class Tachy2Gis:
         # show the dialog
         self.previousTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.mapTool)
+        self.setActiveLayer()
         self.dlg.show()
 
         # Run the dialog event loop
