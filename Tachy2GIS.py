@@ -24,6 +24,11 @@ from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon
 # Initialize Qt resources from file resources.py
 import resources
+try:
+    import shapefile
+except ImportError:
+    print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
+    raise
 # Import the code for the dialog
 from Tachy2GIS_dialog import Tachy2GisDialog
 import os.path
@@ -31,6 +36,16 @@ from qgis.utils import iface
 from pointProvider import PointProvider
 from T2G_PolyPainter import *
 
+    
+def extract3Dvertices(shapeFileName):
+    reader = shapefile.Reader(shapeFileName)
+    allvertices = []
+    for shape in reader.shapes():
+        shapeVertices = [(point[0][0], point[0][1], point[1]) for point in zip(shape.points, shape.z)]
+        for vertex in shapeVertices:
+            if vertex not in allvertices:
+                allvertices.append(vertex)
+    return allvertices
 
 class Tachy2Gis:
     
@@ -43,9 +58,9 @@ class Tachy2Gis:
         vertexFeature = QgsFeature()
         vertexFeature.setGeometry(QgsGeometry.fromPoint(QgsPoint(x, y)))
         vertexFeature.setAttributes([z])
-        vertexDataProvider = self.vertexLayer.dataProvider()
-        vertexDataProvider.addFeatures([vertexFeature])
-        self.vertexLayer.UpdateExtent()
+        #vertexDataProvider = self.vertexLayer.dataProvider()
+        #vertexDataProvider.addFeatures([vertexFeature])
+        #self.vertexLayer.UpdateExtent()
     
     def clearCanvas(self):
         self.mapTool.clear()
@@ -153,9 +168,9 @@ class Tachy2Gis:
         self.mapTool = T2G_PolyPainter(self.iface, self.vertexTableModel)
         self.previousTool = None
         crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
-        self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
-        self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])
-        self.vertexLayer.updateFields()
+        #self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
+        #self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])
+        #self.vertexLayer.updateFields()
         
         
 
