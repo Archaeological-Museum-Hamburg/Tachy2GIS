@@ -38,8 +38,14 @@ class Tachy2Gis:
     # Custom methods go here:
     
     def drawPoint(self):
-        x, y = self.pointProvider.getPoint()
-        self.mapTool.addVertex(None, T2G_Vertex.SOURCE_EXTERNAL, x, y, None)
+        x, y, z = self.pointProvider.getPoint()
+        self.mapTool.addVertex(None, T2G_Vertex.SOURCE_EXTERNAL, x, y, z)
+        vertexFeature = QgsFeature()
+        vertexFeature.setGeometry(QgsGeometry.fromPoint(QgsPoint(x, y)))
+        vertexFeature.setAttributes([z])
+        vertexDataProvider = self.vertexLayer.dataProvider()
+        vertexDataProvider.addFeatures([vertexFeature])
+        self.vertexLayer.UpdateExtent()
     
     def clearCanvas(self):
         self.mapTool.clear()
@@ -146,7 +152,11 @@ class Tachy2Gis:
         self.vertexTableModel = T2G_VertexTableModel(self.vertices)
         self.mapTool = T2G_PolyPainter(self.iface, self.vertexTableModel)
         self.previousTool = None
-       
+        crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
+        self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
+        self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])
+        self.vertexLayer.updateFields()
+        
         
 
     # noinspection PyMethodMayBeStatic
@@ -266,13 +276,7 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
-        
-        layers = self.iface.legendInterface().layers()
-        ll = [layer.name() for layer in layers]
-        #self.dlg.layerList.clear()
-        #self.dlg.layerList.addItems(ll)
-        
-
+     
         # show the dialog
         self.previousTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.mapTool)
