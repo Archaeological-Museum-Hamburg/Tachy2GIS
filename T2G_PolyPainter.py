@@ -92,6 +92,9 @@ class T2G_VertexList():
     def clear(self):
         self.vertices = []
         self.refreshIndex()
+    
+    def getParts(self):
+        return [[[v.x, v.y, v.z] for v in self.vertices]]
 
 class T2G_VertexTableModel(QAbstractTableModel):
     def __init__(self, vertexList, parent = None, *args):

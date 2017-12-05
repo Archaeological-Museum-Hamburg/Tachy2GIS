@@ -62,6 +62,21 @@ class Tachy2Gis:
         #vertexDataProvider.addFeatures([vertexFeature])
         #self.vertexLayer.UpdateExtent()
     
+    def dumpToFile(self):
+        dataUri = self.dlg.mapLayerComboBox.currentLayer().dataProvider().dataSourceUri()
+        targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
+        reader = shapefile.Reader(targetFileName)
+        writer = shapefile.Writer(shapefile.POLYGONZ)
+        writer.fields = list(reader.fields)
+        writer.records.extend(reader.records())
+        writer._shapes.extend(reader.shapes())
+        l = len(writer.shapes())
+        vertexParts = self.vertices.getParts()
+        writer.poly(parts = vertexParts, shapeType = shapefile.POLYGONZ)
+        writer.record(id=8)
+        l = len(writer.shapes())
+        writer.save(targetFileName)
+    
     def clearCanvas(self):
         self.mapTool.clear()
         
@@ -92,6 +107,7 @@ class Tachy2Gis:
         sufficientVertices = len(self.vertices) >= verticesRequired
         #editable = True
         self.dlg.dumpButton.setEnabled(editable and sufficientVertices and not readOnly)
+        self.dlg.dumpButton.setEnabled(True)
     
     def setActiveLayer(self):
         if self.dlg.mapLayerComboBox.currentLayer() is None:
@@ -109,7 +125,7 @@ class Tachy2Gis:
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
-        self.dlg.dumpButton.clicked.connect(self.dump)
+        self.dlg.dumpButton.clicked.connect(self.dumpToFile)
         
         self.dlg.vertexTableView.setModel(self.vertexTableModel)
         self.dlg.finished.connect(self.restoreTool)
@@ -164,6 +180,7 @@ class Tachy2Gis:
         ## From here: Own additions
         self.pointProvider = PointProvider()
         self.vertices = T2G_VertexList()
+        self.vertexIndex = QgsSpatialIndex()
         self.vertexTableModel = T2G_VertexTableModel(self.vertices)
         self.mapTool = T2G_PolyPainter(self.iface, self.vertexTableModel)
         self.previousTool = None
