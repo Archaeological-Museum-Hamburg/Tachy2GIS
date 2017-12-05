@@ -12,13 +12,13 @@ __author__ = 'mail@christiantrapp.net'
 __date__ = '2017-11-26'
 __copyright__ = 'Copyright 2017, Christian Trapp'
 
+from PyQt4.QtGui import QDialogButtonBox, QDialog
 import unittest
 
-from PyQt4.QtGui import QDialogButtonBox, QDialog
-
 from Tachy2GIS_dialog import Tachy2GisDialog
-
 from utilities import get_qgis_app
+
+
 QGIS_APP = get_qgis_app()
 
 

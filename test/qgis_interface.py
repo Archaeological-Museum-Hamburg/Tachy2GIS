@@ -23,10 +23,11 @@ __copyright__ = (
     'Copyright (c) 2014 Tim Sutton, tim@linfiniti.com'
 )
 
-import logging
 from PyQt4.QtCore import QObject, pyqtSlot, pyqtSignal
+import logging
 from qgis.core import QgsMapLayerRegistry
 from qgis.gui import QgsMapCanvasLayer
+
 LOGGER = logging.getLogger('QGIS')
 
 

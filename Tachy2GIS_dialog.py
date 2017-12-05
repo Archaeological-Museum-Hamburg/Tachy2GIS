@@ -21,9 +21,9 @@
  ***************************************************************************/
 """
 
+from PyQt4 import QtGui, uic
 import os
 
-from PyQt4 import QtGui, uic
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'Tachy2GIS_dialog_base.ui'))

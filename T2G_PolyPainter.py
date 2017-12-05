@@ -141,13 +141,13 @@ class T2G_VertexTableModel(QAbstractTableModel):
 class T2G_PolyPainter(QgsMapTool):
     RB_COLOR = Qt.red
     RB_FILLCOLOR = QColor(255, 0, 0, 127)
-    def __init__(self, iface, tableModel):
-        QgsMapTool.__init__(self, iface.mapCanvas())
-    
-        self.canvas = iface.mapCanvas()
+    def __init__(self, parent): #tableModel, vertexIndex, zIndex):
+        
+        QgsMapTool.__init__(self, parent.iface.mapCanvas())
+        self.parent = parent
+        self.canvas = parent.iface.mapCanvas()
         #self.emitPoint = QgsMapToolEmitPoint(self.canvas)
-        self.iface = iface
-        self.tableModel = tableModel
+        self.tableModel = parent.vertexTableModel
         self.vertices = self.tableModel.vertices
         self.rubberBand = QgsRubberBand(self.canvas, QGis.Polygon)
         self.rubberBand.setColor(self.RB_COLOR)
@@ -178,8 +178,13 @@ class T2G_PolyPainter(QgsMapTool):
         x = event.pos().x()
         y = event.pos().y()
         point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
+        vertexId = self.parent.vertexIndex.nearestNeighbor(point, 1)[0]
+        vertex = self.parent.zIndex[vertexId]
+        if len(vertex) == 3:
+            self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, vertex[0], vertex[1], vertex[2])
+        else:
+            self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)
         
-        self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)
     
     """
     def activate(self, *args, **kwargs):

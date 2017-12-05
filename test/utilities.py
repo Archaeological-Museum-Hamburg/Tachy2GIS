@@ -1,8 +1,8 @@
 # coding=utf-8
 """Common functionality used by regression tests."""
 
-import sys
 import logging
+import sys
 
 
 LOGGER = logging.getLogger('QGIS')

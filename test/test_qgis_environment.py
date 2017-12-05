@@ -14,13 +14,15 @@ __copyright__ = ('Copyright 2012, Australia Indonesia Facility for '
                  'Disaster Reduction')
 
 import os
-import unittest
 from qgis.core import (
     QgsProviderRegistry,
     QgsCoordinateReferenceSystem,
     QgsRasterLayer)
+import unittest
 
 from utilities import get_qgis_app
+
+
 QGIS_APP = get_qgis_app()
 
 

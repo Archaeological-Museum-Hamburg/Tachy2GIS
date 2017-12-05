@@ -5,10 +5,11 @@
         git sha              : $TemplateVCSFormat
 """
 
-import sys
 import getpass
-import xmlrpclib
 from optparse import OptionParser
+import sys
+import xmlrpclib
+
 
 # Configuration
 PROTOCOL = 'http'

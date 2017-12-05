@@ -12,10 +12,8 @@ __author__ = 'mail@christiantrapp.net'
 __date__ = '2017-11-26'
 __copyright__ = 'Copyright 2017, Christian Trapp'
 
-import unittest
-
 from PyQt4.QtGui import QIcon
-
+import unittest
 
 
 class Tachy2GisDialogTest(unittest.TestCase):
