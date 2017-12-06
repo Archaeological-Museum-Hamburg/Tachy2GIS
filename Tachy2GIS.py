@@ -31,26 +31,11 @@ from pointProvider import PointProvider
 import resources
 
 # Initialize Qt resources from file resources.py
-try:
-    import shapefile
-except ImportError:
-    print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
-    raise
+
 # Import the code for the dialog
 
     
-def extract3Dvertices(shapeFileName):
-    reader = shapefile.Reader(shapeFileName)
-    allvertices = []
-    for shape in reader.shapes():
-        try:
-            shapeVertices = [(point[0][0], point[0][1], point[1]) for point in zip(shape.points, shape.z)]
-            for vertex in shapeVertices:
-                if vertex not in allvertices:
-                    allvertices.append(vertex)
-        except AttributeError:
-            pass
-    return allvertices
+
 
 class Tachy2Gis:
     
@@ -66,46 +51,15 @@ class Tachy2Gis:
         #vertexDataProvider = self.vertexLayer.dataProvider()
         #vertexDataProvider.addFeatures([vertexFeature])
         #self.vertexLayer.UpdateExtent()
-    
-    def dumpToFile(self):
-        dataUri = self.dlg.mapLayerComboBox.currentLayer().dataProvider().dataSourceUri()
-        targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
-        reader = shapefile.Reader(targetFileName)
-        writer = shapefile.Writer(shapefile.POLYGONZ)
-        writer.fields = list(reader.fields)
-        writer.records.extend(reader.records())
-        writer._shapes.extend(reader.shapes())
-        l = len(writer.shapes())
-        vertexParts = self.vertices.getParts()
-        writer.poly(parts = vertexParts, shapeType = shapefile.POLYGONZ)
-        writer.record(id=8)
-        l = len(writer.shapes())
-        writer.save(targetFileName)
         
-    def updateVertexIndex(self):
-        dataUri = self.dlg.mapLayerComboBox.currentLayer().dataProvider().dataSourceUri()
-        shapeFileName = os.path.splitext(dataUri.split('|')[0])[0]
-        self.vertexIndex = QgsSpatialIndex()
-        vertices = extract3Dvertices(shapeFileName)
-        self.zIndex = []
-        for i, xyz in enumerate(vertices):
-            newVertex = QgsFeature(i)
-            newVertex.setGeometry(QgsGeometry.fromPoint(QgsPoint(xyz[0], xyz[1])))
-            self.vertexIndex.insertFeature(newVertex)
-            self.zIndex.append(xyz)
     
     def clearCanvas(self):
         self.mapTool.clear()
         
     def dump(self):
         layer = self.dlg.mapLayerComboBox.currentLayer()
-        newFeature = QgsFeature(layer.fields())
-        newFeature.setAttributes([0])
-        if layer.wkbType() == 3:
-            newFeature.setGeometry(QgsGeometry.fromPolygon([[vertex.getQpoint() for vertex in self.vertexTableModel.vertices]]))
-        
-        (result, output) = layer.dataProvider().addFeatures([newFeature])
-        if result:
+        self.vertexTableModel.vertexList.dumpToFile(layer)
+        if True:
             self.mapTool.clear()
             layer.triggerRepaint()
     
@@ -127,10 +81,11 @@ class Tachy2Gis:
         self.dlg.dumpButton.setEnabled(True)
     
     def setActiveLayer(self):
-        if self.dlg.mapLayerComboBox.currentLayer() is None:
+        activeLayer = self.dlg.mapLayerComboBox.currentLayer()
+        if activeLayer is None:
             return
-        self.iface.setActiveLayer(self.dlg.mapLayerComboBox.currentLayer())
-        self.updateVertexIndex()
+        self.iface.setActiveLayer(activeLayer)
+        self.vertices.updateAnchors(activeLayer)
     
     def toggleEdit(self):
         iface.actionToggleEditing().trigger()
@@ -143,7 +98,7 @@ class Tachy2Gis:
         self.dlg.pushButton.clicked.connect(self.drawPoint)
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
-        self.dlg.dumpButton.clicked.connect(self.dumpToFile)
+        self.dlg.dumpButton.clicked.connect(self.dump)
         
         self.dlg.vertexTableView.setModel(self.vertexTableModel)
         self.dlg.finished.connect(self.restoreTool)
@@ -198,8 +153,7 @@ class Tachy2Gis:
         ## From here: Own additions
         self.pointProvider = PointProvider()
         self.vertices = T2G_VertexList()
-        self.vertexIndex = QgsSpatialIndex()
-        self.zIndex = []
+        
         self.vertexTableModel = T2G_VertexTableModel(self.vertices)
         self.mapTool = T2G_PolyPainter(self)
         self.previousTool = None
