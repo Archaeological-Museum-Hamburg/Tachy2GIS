@@ -45,12 +45,6 @@ class Tachy2Gis:
     def drawPoint(self):
         x, y, z = self.pointProvider.getPoint()
         self.mapTool.addVertex(None, T2G_Vertex.SOURCE_EXTERNAL, x, y, z)
-        vertexFeature = QgsFeature()
-        vertexFeature.setGeometry(QgsGeometry.fromPoint(QgsPoint(x, y)))
-        vertexFeature.setAttributes([z])
-        #vertexDataProvider = self.vertexLayer.dataProvider()
-        #vertexDataProvider.addFeatures([vertexFeature])
-        #self.vertexLayer.UpdateExtent()
         
     
     def clearCanvas(self):
@@ -59,9 +53,10 @@ class Tachy2Gis:
     def dump(self):
         layer = self.dlg.mapLayerComboBox.currentLayer()
         self.vertexTableModel.vertexList.dumpToFile(layer)
-        if True:
-            self.mapTool.clear()
-            layer.triggerRepaint()
+        self.mapTool.clear()
+        layer.dataProvider().forceReload()
+        layer.triggerRepaint()
+        self.vertices.updateAnchors(layer)
     
     def restoreTool(self):
         if self.previousTool is None:
@@ -115,15 +110,11 @@ class Tachy2Gis:
         self.dlg.writeableButton.clicked.connect(self.toggleEdit)
         self.dlg.writeableButton.clicked.connect(self.setDumpEnabled)
     
-
+    ## Constructor
+    #  @param iface An interface instance that will be passed to this class
+    #  which provides the hook by which you can manipulate the QGIS
+    #  application at run time.
     def __init__(self, iface):
-        """Constructor.
-
-        :param iface: An interface instance that will be passed to this class
-            which provides the hook by which you can manipulate the QGIS
-            application at run time.
-        :type iface: QgsInterface
-        """
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory

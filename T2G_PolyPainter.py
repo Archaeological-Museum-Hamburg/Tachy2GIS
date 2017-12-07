@@ -98,11 +98,15 @@ class T2G_VertexList():
 #         self.maxIndex = len(self.vertices) - 1
 #     
     def updateAnchors(self, dataSource):
+        self.anchorIndex = QgsSpatialIndex()
+        self.anchorPoints = []
+        if dataSource is None:
+            return
+        if not dataSource.dataProvider().name() == u'ogr':
+            return
         dataUri = dataSource.dataProvider().dataSourceUri()
         shapeFileName = os.path.splitext(dataUri.split('|')[0])[0]
-        self.anchorIndex = QgsSpatialIndex()
         points = extract3Dvertices(shapeFileName)
-        self.anchorPoints = []
         for i, xyz in enumerate(points):
             newAnchor = QgsFeature(i)
             newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(xyz[0], xyz[1])))
@@ -154,6 +158,10 @@ class T2G_VertexList():
         return [[[v.x, v.y, v.z] for v in self.vertices]]
     
     def dumpToFile(self, targetLayer):
+        if targetLayer is None:
+            return
+        if not targetLayer.dataProvider().name() == u'ogr':
+            return
         dataUri = targetLayer.dataProvider().dataSourceUri()
         targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
         reader = shapefile.Reader(targetFileName)
