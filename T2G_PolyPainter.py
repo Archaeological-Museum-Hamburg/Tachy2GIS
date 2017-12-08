@@ -12,24 +12,32 @@ import os.path
 import re
 from shapely import wkt
 
+WKT_VALUES = re.compile(r"[\d\-\.]+")
+WKT_STRIP = re.compile(r"^\D+|\D+$")
+
 try:
     import shapefile
 except ImportError:
     print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
     raise
 
-def extract3Dvertices(shapeFileName):
-    reader = shapefile.Reader(shapeFileName)
-    allvertices = []
-    for shape in reader.shapes():
-        try:
-            shapeVertices = [(point[0][0], point[0][1], point[1]) for point in zip(shape.points, shape.z)]
-            for vertex in shapeVertices:
-                if vertex not in allvertices:
-                    allvertices.append(vertex)
-        except AttributeError:
-            pass
-    return allvertices
+def extractAnchors(layer):
+    wkts = [feature.geometry().exportToWkt() for feature in layer.getFeatures()]
+    allVertices = []
+    anchorWkts = []
+    extensions = [' ', 'Z ', 'MZ ']
+    for wkt in wkts:
+        for part in wkt.split(','):
+            dimensions = WKT_VALUES.findall(part)
+            coordinates = tuple(map(float, dimensions[:3]))
+            if coordinates not in allVertices:
+                allVertices.append(coordinates)
+                coordText = WKT_STRIP.sub('', part)
+                extension = extensions[len(dimensions) - 2]
+                anchorWkts.append('Point' + extension + '(' + coordText + ')')
+    return allVertices, anchorWkts
+
+
 
 
 ## This class handles individual vertices for data acquisition and visualization
@@ -46,7 +54,7 @@ class T2G_Vertex():
     ## Mapping source keywords to the corresponding shapes.
     SHAPE_MAP = {SOURCE_INTERNAL: SHAPE_INTERNAL,
                  SOURCE_EXTERNAL: SHAPE_EXTERNAL}
-    WKT_VALUES = re.compile(r"[\d\-\.]+")
+    
     
     
     ## Constructor
@@ -62,7 +70,7 @@ class T2G_Vertex():
         self.wkt = wkt
         self.wktDimensions = 0
         if not wkt == "":
-            dimensions = self.WKT_VALUES.findall(wkt)
+            dimensions = WKT_VALUES.findall(wkt)
             self.x, self.y, self.z = map(float, dimensions[:3])
             self.wktDimensions = len(dimensions)
         ### Headers for a table model
@@ -78,6 +86,12 @@ class T2G_Vertex():
     
     def setXyz(self, xyz):
         self.x, self.y, self.z = xyz
+    
+    def setWkt(self, wkt):
+        self.wkt = wkt
+        dimensions = WKT_VALUES.findall(wkt)
+        self.x, self.y, self.z = map(float, dimensions[:3])
+        self.wktDimensions = len(dimensions)
     
     def getMarker(self, canvas):
         marker = QgsVertexMarker(canvas)
@@ -108,21 +122,21 @@ class T2G_VertexList():
 #     def refreshIndex(self):
 #         self.maxIndex = len(self.vertices) - 1
 #     
-    def updateAnchors(self, dataSource):
+    def updateAnchors(self, layer):
         self.anchorIndex = QgsSpatialIndex()
         self.anchorPoints = []
-        if dataSource is None:
+        if layer is None:
             return
-        if not dataSource.dataProvider().name() == u'ogr':
-            return
-        dataUri = dataSource.dataProvider().dataSourceUri()
-        shapeFileName = os.path.splitext(dataUri.split('|')[0])[0]
-        points = extract3Dvertices(shapeFileName)
-        for i, xyz in enumerate(points):
+        i = 0
+        vertices, wkts = extractAnchors(layer)
+        for vertex, wkt in zip(vertices, wkts):
             newAnchor = QgsFeature(i)
-            newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(xyz[0], xyz[1])))
+            i += 1
+    
+            newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(vertex[0], vertex[1])))
+
             self.anchorIndex.insertFeature(newAnchor)
-            self.anchorPoints.append(xyz)
+            self.anchorPoints.append(wkt)
     
     def __len__(self):
         return self.vertices.__len__()
@@ -134,8 +148,8 @@ class T2G_VertexList():
         if vertex.source == T2G_Vertex.SOURCE_INTERNAL:
             anchorId = self.anchorIndex.nearestNeighbor(QgsPoint(vertex.x,vertex.y), 1)
             if anchorId:
-                xyz = self.anchorPoints[anchorId[0]]
-                vertex.setXyz(xyz)
+                wkt = self.anchorPoints[anchorId[0]]
+                vertex.setWkt(wkt)
         self.vertices.append(vertex)
         return vertex
     
