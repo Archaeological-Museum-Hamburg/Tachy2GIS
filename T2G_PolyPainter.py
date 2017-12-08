@@ -9,6 +9,8 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from docutils.parsers.rst.roles import role
 import os.path
+import re
+from shapely import wkt
 
 try:
     import shapefile
@@ -44,20 +46,29 @@ class T2G_Vertex():
     ## Mapping source keywords to the corresponding shapes.
     SHAPE_MAP = {SOURCE_INTERNAL: SHAPE_INTERNAL,
                  SOURCE_EXTERNAL: SHAPE_EXTERNAL}
+    WKT_VALUES = re.compile(r"[\d\-\.]+")
+    
     
     ## Constructor
     # @param label Point number or identifier
     # @param source Should be one of the defined source keywords
     # @param x,y,z Vertex coordinates
-    def __init__(self, label = None, source = None, x = None, y = None, z = None):
+    def __init__(self, label = None, source = None, x = None, y = None, z = None, wkt = ""):
         self.label = str(label)
         self.source = source
         self.x = x
         self.y = y
         self.z = z
+        self.wkt = wkt
+        self.wktDimensions = 0
+        if not wkt == "":
+            dimensions = self.WKT_VALUES.findall(wkt)
+            self.x, self.y, self.z = map(float, dimensions[:3])
+            self.wktDimensions = len(dimensions)
         ### Headers for a table model
         self.headers = ['#', 'Source', 'x', 'y', 'z']
     
+
     ## list of fields used to feed a table model
     def fields(self):
         return [self.label, self.source, self.x, self.y, self.z]
@@ -292,4 +303,6 @@ if __name__ == "__main__":
     printColors(vl)
     vl.clearSelection()
     printColors(vl)
-    
+    wktv = T2G_Vertex(wkt = '552364.36630000011064112 5921140.47400000039488077 49.57150000000000034 -179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368')
+    print vl[0].wktDimensions
+    print wktv.wktDimensions
