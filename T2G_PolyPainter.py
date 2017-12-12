@@ -22,40 +22,6 @@ except ImportError:
     print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
     raise
 
-def extractAnchors(layer):
-    aud = AnchorUpdateDialog()
-    aud.geometriesBar.setMaximum(layer.featureCount())
-    aud.geometriesBar.setValue(0)
-    aud.anchorBar.setvalue(0)
-    aud.show()
-    features = layer.getFeatures()
-    wkts = []
-    for i, feature in enumerate(features):
-        geometry = feature.geometry()
-        try:
-            wkts.append(geometry.exportToWkt())
-        except:
-            pass
-        aud.geometriesBar.setValue(i)
-    #[ for geometry in geometries if geometry is not None]
-    aud.anchorBar.setMaximum(len(wkts))
-    allVertices = []
-    anchorWkts = []
-    extensions = [' ', 'Z ', 'MZ ']
-    for i, wkt in enumerate(wkts):
-        for part in wkt.split(','):
-            dimensions = WKT_VALUES.findall(part)
-            coordinates = tuple(map(float, dimensions[:3]))
-            if coordinates not in allVertices:
-                allVertices.append(coordinates)
-                coordText = WKT_STRIP.sub('', part)
-                extension = extensions[len(dimensions) - 2]
-                anchorWkts.append('Point' + extension + '(' + coordText + ')')
-            aud.anchorBar.setValue(i)
-    aud.hide()
-    return allVertices, anchorWkts
-
-
 
 
 ## This class handles individual vertices for data acquisition and visualization
