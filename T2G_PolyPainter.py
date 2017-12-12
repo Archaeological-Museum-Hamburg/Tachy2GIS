@@ -137,24 +137,69 @@ class T2G_VertexList():
         self.selected = None
         self.maxIndex = None
     
-#     def refreshIndex(self):
-#         self.maxIndex = len(self.vertices) - 1
-#     
+    ## this method updates anchor points for snapping
+    #  extracting all vertices from the geometeries in a layer may take some time,
+    #  so the method report its progress via a dialog. The process is time consuming,
+    #  because it relies on wkt export to access the vertices.
+    #  
+    #  @param layer: The currently active layer
     def updateAnchors(self, layer):
+        ## Snapping is driven by a spatial index of all distinct existing vertices
+        #  the index is 2D only, so 3-4D information has to be stored elsewhere
+        #  (self.anchorPoints in this case).
+        #  self.anchorPoints holds wkt representation of all vertices that can be 
+        #  passed to the ctor of a new T2G_Vertex. 
         self.anchorIndex = QgsSpatialIndex()
         self.anchorPoints = []
         if layer is None:
+            # empty or noneexisting layers leave us with an empty point list and index.
             return
-        i = 0
-        vertices, wkts = extractAnchors(layer)
-        for vertex, wkt in zip(vertices, wkts):
-            newAnchor = QgsFeature(i)
-            i += 1
-    
-            newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(vertex[0], vertex[1])))
+        # Initializing and displaying the progress dialog
+        aud = AnchorUpdateDialog()
+        aud.geometriesBar.setMaximum(layer.featureCount())
+        aud.geometriesBar.setValue(0)
+        aud.anchorBar.setValue(0)
+        aud.show()
 
-            self.anchorIndex.insertFeature(newAnchor)
-            self.anchorPoints.append(wkt)
+        features = layer.getFeatures()
+        # getting all features and making sure they have geometries that can be
+        # exported to wkt. This solution with expection handling has been chosen
+        # because checking 'geometry is None' leads to instant crashing (No
+        # stack trace,no exception, no nothing).
+        # The enumerator is required to update the progress bar
+        wkts = []
+        for i, feature in enumerate(features):
+            geometry = feature.geometry()
+            try:
+                wkts.append(geometry.exportToWkt())
+            except:
+                pass
+            aud.geometriesBar.setValue(i)
+        aud.anchorBar.setMaximum(len(wkts))
+        allVertices = []
+        extensions = [' ', 'Z ', 'MZ ']
+        pointIndex = 0
+        for i, wkt in enumerate(wkts):
+            # The feature wtk strings are broken into their vertices 
+            for vertext in wkt.split(','):
+                # a regex pulls out the numbers, ofwhich the firs three are mapped to float
+                dimensions = WKT_VALUES.findall(vertext)
+                coordinates = tuple(map(float, dimensions[:3]))
+                # this ensures that only distinct vertices are indexed
+                if coordinates not in allVertices:
+                    allVertices.append(coordinates)
+                    # preparing a new wkt string representing the vertex as point
+                    coordText = WKT_STRIP.sub('', vertext)
+                    extension = extensions[len(dimensions) - 2]
+                    self.anchorPoints.append('Point' + extension + '(' + coordText + ')')
+                    # creating and adding a new entry to the index. The id is 
+                    # synchonized with the point list 
+                    newAnchor = QgsFeature(pointIndex)
+                    pointIndex += 1
+                    newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(coordinates[0], coordinates[1])))
+                    self.anchorIndex.insertFeature(newAnchor)
+
+        aud.hide()
     
     def __len__(self):
         return self.vertices.__len__()
