@@ -24,10 +24,12 @@ except ImportError:
 
 def extractAnchors(layer):
     aud = AnchorUpdateDialog()
-    aud.show()
-    wkts = []
-    features = layer.getFeatures()
     aud.geometriesBar.setMaximum(layer.featureCount())
+    aud.geometriesBar.setValue(0)
+    aud.anchorBar.setvalue(0)
+    aud.show()
+    features = layer.getFeatures()
+    wkts = []
     for i, feature in enumerate(features):
         geometry = feature.geometry()
         try:
@@ -50,6 +52,7 @@ def extractAnchors(layer):
                 extension = extensions[len(dimensions) - 2]
                 anchorWkts.append('Point' + extension + '(' + coordText + ')')
             aud.anchorBar.setValue(i)
+    aud.hide()
     return allVertices, anchorWkts
 
 
