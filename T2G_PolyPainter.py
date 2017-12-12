@@ -11,6 +11,7 @@ from docutils.parsers.rst.roles import role
 import os.path
 import re
 from shapely import wkt
+from AnchorUpdateDialog import AnchorUpdateDialog
 
 WKT_VALUES = re.compile(r"[\d\-\.]+")
 WKT_STRIP = re.compile(r"^\D+|\D+$")
@@ -22,11 +23,24 @@ except ImportError:
     raise
 
 def extractAnchors(layer):
-    wkts = [feature.geometry().exportToWkt() for feature in layer.getFeatures()]
+    aud = AnchorUpdateDialog()
+    aud.show()
+    wkts = []
+    features = layer.getFeatures()
+    aud.geometriesBar.setMaximum(layer.featureCount())
+    for i, feature in enumerate(features):
+        geometry = feature.geometry()
+        try:
+            wkts.append(geometry.exportToWkt())
+        except:
+            pass
+        aud.geometriesBar.setValue(i)
+    #[ for geometry in geometries if geometry is not None]
+    aud.anchorBar.setMaximum(len(wkts))
     allVertices = []
     anchorWkts = []
     extensions = [' ', 'Z ', 'MZ ']
-    for wkt in wkts:
+    for i, wkt in enumerate(wkts):
         for part in wkt.split(','):
             dimensions = WKT_VALUES.findall(part)
             coordinates = tuple(map(float, dimensions[:3]))
@@ -35,6 +49,7 @@ def extractAnchors(layer):
                 coordText = WKT_STRIP.sub('', part)
                 extension = extensions[len(dimensions) - 2]
                 anchorWkts.append('Point' + extension + '(' + coordText + ')')
+            aud.anchorBar.setValue(i)
     return allVertices, anchorWkts
 
 
