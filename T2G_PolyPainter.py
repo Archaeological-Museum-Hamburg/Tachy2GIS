@@ -141,6 +141,9 @@ class T2G_VertexList():
             except:
                 pass
             aud.geometriesBar.setValue(i)
+            if aud.aborted:
+                self.abortUpdate()
+                return
         aud.anchorBar.setMaximum(len(wkts))
         allVertices = []
         extensions = [' ', 'Z ', 'MZ ']
@@ -164,8 +167,15 @@ class T2G_VertexList():
                     pointIndex += 1
                     newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(coordinates[0], coordinates[1])))
                     self.anchorIndex.insertFeature(newAnchor)
-
+                if aud.aborted:
+                    self.abortUpdate()
+                    return
         aud.hide()
+    
+    def abortUpdate(self):
+        self.anchorIndex = QgsSpatialIndex()
+        self.anchorPoints = []
+        self.aud.hide()
     
     def __len__(self):
         return self.vertices.__len__()

@@ -39,3 +39,12 @@ class AnchorUpdateDialog(QtGui.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.aborted = False
+        self.abortButton.clicked.connect(self.abortButtonClicked)
+    
+    def abortButtonClicked(self):
+        self.aborted = True
+        
+    def show(self, *args, **kwargs):
+        self.aborted = False
+        return QtGui.QDialog.show(self, *args, **kwargs)

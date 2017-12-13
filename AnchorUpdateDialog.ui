@@ -56,27 +56,13 @@
      <property name="text">
       <string>Abort</string>
      </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
     </widget>
    </item>
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>abortButton</sender>
-   <signal>clicked()</signal>
-   <receiver>anchorDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>236</x>
-     <y>130</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>236</x>
-     <y>76</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>
