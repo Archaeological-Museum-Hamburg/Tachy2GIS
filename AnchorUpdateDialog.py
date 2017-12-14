@@ -22,6 +22,7 @@
 """
 
 from PyQt4 import QtGui, uic
+from PyQt4.QtCore import *
 import os
 
 
@@ -48,3 +49,19 @@ class AnchorUpdateDialog(QtGui.QDialog, FORM_CLASS):
     def show(self, *args, **kwargs):
         self.aborted = False
         return QtGui.QDialog.show(self, *args, **kwargs)
+    
+    @pyqtSlot(int)
+    def setAnchorCount(self, n):
+        self.anchorBar.setMaximum(n)
+    
+    @pyqtSlot(int)
+    def geometriesProgress(self, n):
+        self.geometriesBar.setValue(n)
+    
+    @pyqtSlot(int)
+    def anchorProgress(self, n):
+        self.anchorBar.setValue(n)
+    
+    
+    
+    

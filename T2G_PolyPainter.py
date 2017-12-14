@@ -22,7 +22,62 @@ except ImportError:
     print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
     raise
 
+class AnchorUpdater(QObject):
+    signalGeometriesProgress = pyqtSignal(int)
+    signalAnchorCount = pyqtSignal(int)
+    signalAnchorProgress = pyqtSignal(int)
+    signalFinished = pyqtSignal()
+    
+    def __init__(self, parent = None, layer = None):
+        super(self.__class__, self).__init__(parent)
+        self.layer = layer
+        self.anchorPoints = []
+        self.anchorIndex = QgsSpatialIndex()
+     
 
+    def startExtraction(self):
+        features = self.layer.getFeatures()
+        # getting all features and making sure they have geometries that can be
+        # exported to wkt. This solution with expection handling has been chosen
+        # because checking 'geometry is None' leads to instant crashing (No
+        # stack trace,no exception, no nothing).
+        # The enumerator is required to update the progress bar
+        wkts = []
+        for i, feature in enumerate(features):
+            geometry = feature.geometry()
+            try:
+                wkts.append(geometry.exportToWkt())
+            except:
+                pass
+            self.signalGeometriesProgress.emit(i)
+            qApp.processEvents()
+        allVertices = []
+        extensions = [' ', 'Z ', 'MZ ']
+        pointIndex = 0
+        self.signalAnchorCount.emit(len(wkts))
+        for i, wkt in enumerate(wkts):
+            # The feature wtk strings are broken into their vertices 
+            for vertext in wkt.split(','):
+                # a regex pulls out the numbers, of which the first three are mapped to float
+                dimensions = WKT_VALUES.findall(vertext)
+                coordinates = tuple(map(float, dimensions[:3]))
+                # this ensures that only distinct vertices are indexed
+                if coordinates not in allVertices:
+                    allVertices.append(coordinates)
+                    # preparing a new wkt string representing the vertex as point
+                    coordText = WKT_STRIP.sub('', vertext)
+                    extension = extensions[len(dimensions) - 2]
+                    self.anchorPoints.append('Point' + extension + '(' + coordText + ')')
+                    # creating and adding a new entry to the index. The id is 
+                    # synchronized with the point list 
+                    newAnchor = QgsFeature(pointIndex)
+                    pointIndex += 1
+                    newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(coordinates[0], coordinates[1])))
+                    self.anchorIndex.insertFeature(newAnchor)
+                self.signalAnchorCount.emit(i)
+                qApp.processEvents()
+        self.signalFinished.emit()
+        
 
 ## This class handles individual vertices for data acquisition and visualization
 #
@@ -125,51 +180,19 @@ class T2G_VertexList():
         aud.geometriesBar.setMaximum(layer.featureCount())
         aud.geometriesBar.setValue(0)
         aud.anchorBar.setValue(0)
+        anchorUpdater = AnchorUpdater(layer = layer)
+        updateThread = QThread()
+        anchorUpdater.moveToThread(updateThread)
+        updateThread.start()
+        anchorUpdater.signalAnchorCount.connect(aud.setAnchorCount)
+        anchorUpdater.signalAnchorProgress.connect(aud.anchorProgress)
+        anchorUpdater.signalGeometriesProgress.connect(aud.geometriesProgress)
         aud.show()
-
-        features = layer.getFeatures()
-        # getting all features and making sure they have geometries that can be
-        # exported to wkt. This solution with expection handling has been chosen
-        # because checking 'geometry is None' leads to instant crashing (No
-        # stack trace,no exception, no nothing).
-        # The enumerator is required to update the progress bar
-        wkts = []
-        for i, feature in enumerate(features):
-            geometry = feature.geometry()
-            try:
-                wkts.append(geometry.exportToWkt())
-            except:
-                pass
-            aud.geometriesBar.setValue(i)
-            if aud.aborted:
-                self.abortUpdate()
-                return
-        aud.anchorBar.setMaximum(len(wkts))
-        allVertices = []
-        extensions = [' ', 'Z ', 'MZ ']
-        pointIndex = 0
-        for i, wkt in enumerate(wkts):
-            # The feature wtk strings are broken into their vertices 
-            for vertext in wkt.split(','):
-                # a regex pulls out the numbers, ofwhich the firs three are mapped to float
-                dimensions = WKT_VALUES.findall(vertext)
-                coordinates = tuple(map(float, dimensions[:3]))
-                # this ensures that only distinct vertices are indexed
-                if coordinates not in allVertices:
-                    allVertices.append(coordinates)
-                    # preparing a new wkt string representing the vertex as point
-                    coordText = WKT_STRIP.sub('', vertext)
-                    extension = extensions[len(dimensions) - 2]
-                    self.anchorPoints.append('Point' + extension + '(' + coordText + ')')
-                    # creating and adding a new entry to the index. The id is 
-                    # synchonized with the point list 
-                    newAnchor = QgsFeature(pointIndex)
-                    pointIndex += 1
-                    newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(coordinates[0], coordinates[1])))
-                    self.anchorIndex.insertFeature(newAnchor)
-                if aud.aborted:
-                    self.abortUpdate()
-                    return
+        anchorUpdater.startExtraction()
+        
+        if aud.aborted:
+            self.anchorIndex = QgsSpatialIndex()
+            self.anchorPoints = []
         aud.hide()
     
     def abortUpdate(self):
