@@ -370,16 +370,22 @@ class T2G_PolyPainter(QgsMapTool):
         vertex = T2G_Vertex(label, source, x, y, z)
         adjusted = self.tableModel.addVertex(vertex)
         self.rubberBand.addPoint(adjusted.getQpoint(), True)
+        index = len(self.markers)
         self.markers.append(adjusted.getMarker(self.canvas))
+        self.parent.dlg.vertexTableView.selectRow(index)
+
         
     def deleteVertex(self):
         selectionModel = self.parent.dlg.vertexTableView.selectionModel()
-        if selectionModel.hasSelection():
+        if selectionModel.selectedIndexes():
             index = selectionModel.selectedIndexes()[0].row()
             self.rubberBand.removePoint(index)
             self.markers[index].hide()
             del self.markers[index]
             self.tableModel.deleteVertex(index)
+            lastRow = len(self.markers) - 1
+            if lastRow >= 0:
+                self.parent.dlg.vertexTableView.selectRow(lastRow)
         pass
     
     ## Removes all markers, resets the rubber band and clears the table model 
