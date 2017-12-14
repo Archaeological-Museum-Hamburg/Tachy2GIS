@@ -158,10 +158,10 @@ class T2G_Vertex():
 #  it also pulls existing vertices from a shapefile to use them as anchors when
 #  manually creating vertices.
 class T2G_VertexList():
-    ## The color of unselected vertices
-    VERTEX_COLOR = QColor(0, 255, 0)
+    ## The color of unselected vertice
+    VERTEX_COLOR = Qt.red
     ### Selected vertices get a different color
-    SELECTED_COLOR = QColor(255, 0, 0)
+    SELECTED_COLOR = Qt.green
     
     
     def __init__(self, vertices = []):
@@ -210,7 +210,7 @@ class T2G_VertexList():
         self.anchorIndex = self.anchorUpdater.anchorIndex
         self.anchorPoints = self.anchorUpdater.anchorPoints
         
-    def hasPoints(self):
+    def hasAnchors(self):
         return len(self.anchorPoints) > 0
     
     @pyqtSlot()
@@ -245,9 +245,12 @@ class T2G_VertexList():
         self.selected = None
     
     def getColors(self):
-        colors = [self.VERTEX_COLOR for vertex in self.vertices]
-        if self.selected:
-            colors[self.selected] = self.SELECTED_COLOR
+        colors = []
+        for i, vertex in enumerate(self.vertices):
+            if i == self.selected:
+                colors.append(self.SELECTED_COLOR)
+            else:
+                colors.append(self.VERTEX_COLOR)
         return colors
     
     def getShapes(self):
@@ -361,6 +364,12 @@ class T2G_PolyPainter(QgsMapTool):
         adjusted = self.tableModel.addVertex(vertex)
         self.rubberBand.addPoint(adjusted.getQpoint(), True)
         self.markers.append(adjusted.getMarker(self.canvas))
+        
+    def deleteVertex(self):
+        selectionModel = self.parent.dlg.vertexTableView.selectionModel()
+        if selectionModel.hasSelection():
+            index = selectionModel.selectedIndexes()[0].row()
+        pass
     
     ## Removes all markers, resets the rubber band and clears the table model 
     def clear(self):
@@ -376,6 +385,16 @@ class T2G_PolyPainter(QgsMapTool):
         point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
         self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)
         
+    def selectVertex(self):
+        selection = self.parent.dlg.vertexTableView.selectionModel().selectedRows()
+        if selection:
+            index = selection[0].row()
+            self.tableModel.vertexList.select(index)
+            markerColors = self.tableModel.vertexList.getColors()
+            for marker, color in zip(self.markers, markerColors):
+                marker.setColor(color)
+            self.canvas.refresh()
+        pass
     
     """
     def activate(self, *args, **kwargs):

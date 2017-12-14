@@ -94,8 +94,12 @@ class Tachy2Gis:
         self.dlg.clearButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
+        self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         
         self.dlg.vertexTableView.setModel(self.vertexTableModel)
+        self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexTableModel))
+        self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
+        
         self.dlg.finished.connect(self.restoreTool)
         self.dlg.accepted.connect(self.restoreTool)
         self.dlg.rejected.connect(self.restoreTool)
@@ -109,6 +113,7 @@ class Tachy2Gis:
         
         self.dlg.writeableButton.clicked.connect(self.toggleEdit)
         self.dlg.writeableButton.clicked.connect(self.setDumpEnabled)
+        
     
     ## Constructor
     #  @param iface An interface instance that will be passed to this class
