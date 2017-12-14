@@ -236,6 +236,9 @@ class T2G_VertexList():
         self.vertices.append(vertex)
         return vertex
     
+    def deleteVertex(self,index):
+        del self.vertices[index]
+    
     def select(self, index):
         if index >= len(self):
             return
@@ -318,6 +321,10 @@ class T2G_VertexTableModel(QAbstractTableModel):
         self.layoutChanged.emit()
         return adjusted
     
+    def deleteVertex(self, index):
+        self.vertexList.deleteVertex(index)
+        self.layoutChanged.emit()
+    
     def headerData(self, section, orientation, role):
         if Qt is None:
             return
@@ -369,6 +376,10 @@ class T2G_PolyPainter(QgsMapTool):
         selectionModel = self.parent.dlg.vertexTableView.selectionModel()
         if selectionModel.hasSelection():
             index = selectionModel.selectedIndexes()[0].row()
+            self.rubberBand.removePoint(index)
+            self.markers[index].hide()
+            del self.markers[index]
+            self.tableModel.deleteVertex(index)
         pass
     
     ## Removes all markers, resets the rubber band and clears the table model 
