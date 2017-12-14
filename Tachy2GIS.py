@@ -52,7 +52,7 @@ class Tachy2Gis:
         
     def dump(self):
         layer = self.dlg.mapLayerComboBox.currentLayer()
-        self.vertexTableModel.vertexList.dumpToFile(layer)
+        self.vertexTableModel.vertexList.dump(layer)
         self.mapTool.clear()
         layer.dataProvider().forceReload()
         layer.triggerRepaint()

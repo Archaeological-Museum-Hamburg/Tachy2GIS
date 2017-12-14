@@ -15,6 +15,7 @@ from AnchorUpdateDialog import AnchorUpdateDialog
 
 WKT_VALUES = re.compile(r"[\d\-\.]+")
 WKT_STRIP = re.compile(r"^\D+|\D+$")
+WKT_EXTENSIONS = [' ', 'Z ', 'MZ ']
 
 try:
     import shapefile
@@ -63,7 +64,7 @@ class AnchorUpdater(QObject):
                 self.anchorIndex = QgsSpatialIndex()
                 return
         allVertices = []
-        extensions = [' ', 'Z ', 'MZ ']
+        
         pointIndex = 0
         self.signalAnchorCount.emit(len(wkts))
         for i, wkt in enumerate(wkts):
@@ -77,7 +78,7 @@ class AnchorUpdater(QObject):
                     allVertices.append(coordinates)
                     # preparing a new wkt string representing the vertex as point
                     coordText = WKT_STRIP.sub('', vertext)
-                    extension = extensions[len(dimensions) - 2]
+                    extension = WKT_EXTENSIONS[len(dimensions) - 2]
                     self.anchorPoints.append('Point' + extension + '(' + coordText + ')')
                     # creating and adding a new entry to the index. The id is 
                     # synchronized with the point list 
@@ -270,6 +271,26 @@ class T2G_VertexList():
     
     def getParts(self):
         return [[[v.x, v.y, v.z] for v in self.vertices]]
+    
+    def dump(self, targetLayer):
+        if targetLayer is None:
+            return
+        if targetLayer.geometryType() == QGis.Polygon:
+            wkts = [vertex.wkt for vertex in self.vertices]
+            coordinates = [WKT_STRIP.sub('', wkt) for wkt in wkts]
+            coordinates.append(coordinates[0])
+                
+            wktType = 'Polygon'
+            extension = WKT_EXTENSIONS[self.vertices[0].wktDimensions - 2]
+            parts = '((' + ','.join(coordinates) + '))'
+        
+        newWkt = wktType + extension + parts
+        newFeature = QgsFeature()
+        newGeometry = QgsGeometry.fromWkt(newWkt)
+        newFeature.setGeometry(newGeometry)
+        
+        targetLayer.addFeature(newFeature)
+        
     
     def dumpToFile(self, targetLayer):
         if targetLayer is None:
