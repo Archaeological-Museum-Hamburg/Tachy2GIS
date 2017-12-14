@@ -33,7 +33,14 @@ class AnchorUpdater(QObject):
         self.layer = layer
         self.anchorPoints = []
         self.anchorIndex = QgsSpatialIndex()
-     
+        self.abort = False
+        self._mutex =QMutex()
+    
+    @pyqtSlot()
+    def abortExtraction(self):
+        self._mutex.lock()
+        self.abort = True
+        self._mutex.unlock()
 
     def startExtraction(self):
         features = self.layer.getFeatures()
@@ -51,6 +58,10 @@ class AnchorUpdater(QObject):
                 pass
             self.signalGeometriesProgress.emit(i)
             qApp.processEvents()
+            if self.abort: 
+                self.anchorPoints = []
+                self.anchorIndex = QgsSpatialIndex()
+                return
         allVertices = []
         extensions = [' ', 'Z ', 'MZ ']
         pointIndex = 0
@@ -76,6 +87,10 @@ class AnchorUpdater(QObject):
                     self.anchorIndex.insertFeature(newAnchor)
                 self.signalAnchorCount.emit(i)
                 qApp.processEvents()
+                if self.abort: 
+                    self.anchorPoints = []
+                    self.anchorIndex = QgsSpatialIndex()
+                    return
         self.signalFinished.emit()
         
 
@@ -157,6 +172,8 @@ class T2G_VertexList():
         self.anchorIndex = QgsSpatialIndex()
         self.selected = None
         self.maxIndex = None
+        self.updateThread = QThread()
+        self.anchorUpdater = None
     
     ## this method updates anchor points for snapping
     #  extracting all vertices from the geometeries in a layer may take some time,
@@ -177,28 +194,32 @@ class T2G_VertexList():
             return
         # Initializing and displaying the progress dialog
         aud = AnchorUpdateDialog()
+        aud.abortButton.clicked.connect(self.abortUpdate)
         aud.geometriesBar.setMaximum(layer.featureCount())
         aud.geometriesBar.setValue(0)
         aud.anchorBar.setValue(0)
-        anchorUpdater = AnchorUpdater(layer = layer)
-        updateThread = QThread()
-        anchorUpdater.moveToThread(updateThread)
-        updateThread.start()
-        anchorUpdater.signalAnchorCount.connect(aud.setAnchorCount)
-        anchorUpdater.signalAnchorProgress.connect(aud.anchorProgress)
-        anchorUpdater.signalGeometriesProgress.connect(aud.geometriesProgress)
+        self.anchorUpdater = AnchorUpdater(layer = layer)
+
+        self.anchorUpdater.moveToThread(self.updateThread)
+        self.updateThread.start()
+        self.anchorUpdater.signalAnchorCount.connect(aud.setAnchorCount)
+        self.anchorUpdater.signalAnchorProgress.connect(aud.anchorProgress)
+        self.anchorUpdater.signalGeometriesProgress.connect(aud.geometriesProgress)
         aud.show()
-        anchorUpdater.startExtraction()
+        self.anchorUpdater.startExtraction()
+        self.anchorIndex = self.anchorUpdater.anchorIndex
+        self.anchorPoints = self.anchorUpdater.anchorPoints
         
-        if aud.aborted:
-            self.anchorIndex = QgsSpatialIndex()
-            self.anchorPoints = []
-        aud.hide()
+    def hasPoints(self):
+        return len(self.anchorPoints) > 0
     
+    @pyqtSlot()
     def abortUpdate(self):
-        self.anchorIndex = QgsSpatialIndex()
-        self.anchorPoints = []
-        self.aud.hide()
+        if self.updateThread.isRunning():
+            self.anchorUpdater.abortExtraction()
+            self.updateThread.terminate()
+            self.updateThread.wait()
+    
     
     def __len__(self):
         return self.vertices.__len__()
