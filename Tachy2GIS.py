@@ -91,7 +91,7 @@ class Tachy2Gis:
         """This method connects all controls in the UI to their callbacks.
         It is called in ad_action"""
         self.dlg.pushButton.clicked.connect(self.drawPoint)
-        self.dlg.clearButton.clicked.connect(self.clearCanvas)
+        self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
