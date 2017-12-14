@@ -81,6 +81,7 @@ class Tachy2Gis:
             return
         self.iface.setActiveLayer(activeLayer)
         self.vertices.updateAnchors(activeLayer)
+        self.mapTool.setGeometryType(activeLayer)
     
     def toggleEdit(self):
         iface.actionToggleEditing().trigger()

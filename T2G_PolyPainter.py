@@ -353,15 +353,20 @@ class T2G_PolyPainter(QgsMapTool):
         #self.emitPoint = QgsMapToolEmitPoint(self.canvas)
         self.tableModel = parent.vertexTableModel
         self.rubberBand = QgsRubberBand(self.canvas, QGis.Polygon)
+        self.geometryType = QGis.Polygon
         self.rubberBand.setColor(self.RB_COLOR)
         self.rubberBand.setFillColor(self.RB_FILLCOLOR)
         self.rubberBand.setWidth(1)
         self.markers = []
         self.reset()
+        
+    def setGeometryType(self,layer):
+        self.geometryType = layer.geometryType()
+        self.reset()
     
     ## Reset the rubber band and clean up markers
     def reset(self):
-        self.rubberBand.reset(QGis.Polygon)
+        self.rubberBand.reset(self.geometryType)
         self.markers = []
     
     
