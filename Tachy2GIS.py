@@ -109,6 +109,7 @@ class Tachy2Gis:
         self.dlg.mapLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.mapLayerComboBox.layerChanged.connect(self.setDumpEnabled)
         self.dlg.mapLayerComboBox.layerChanged.connect(self.setActiveLayer)
+        self.dlg.mapLayerComboBox.layerChanged.connect(self.mapTool.clear)
         self.vertexTableModel.layoutChanged.connect(self.setDumpEnabled)
         self.setDumpEnabled()
         

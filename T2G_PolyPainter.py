@@ -15,7 +15,7 @@ from AnchorUpdateDialog import AnchorUpdateDialog
 
 WKT_VALUES = re.compile(r"[\d\-\.]+")
 WKT_STRIP = re.compile(r"^\D+|\D+$")
-WKT_EXTENSIONS = [' ', 'Z ', 'MZ ']
+WKT_EXTENSIONS = [' ', 'Z ', 'ZM ']
 
 try:
     import shapefile
@@ -289,7 +289,7 @@ class T2G_VertexList():
         newGeometry = QgsGeometry.fromWkt(newWkt)
         newFeature.setGeometry(newGeometry)
         
-        targetLayer.addFeature(newFeature)
+        targetLayer.dataProvider().addFeatures([newFeature])
         
     
     def dumpToFile(self, targetLayer):
