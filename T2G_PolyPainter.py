@@ -12,6 +12,7 @@ import os.path
 import re
 from shapely import wkt
 from AnchorUpdateDialog import AnchorUpdateDialog
+from FieldDialog import FieldDialog
 
 WKT_VALUES = re.compile(r"[\d\-\.]+")
 WKT_STRIP = re.compile(r"^\D+|\D+$")
@@ -275,21 +276,24 @@ class T2G_VertexList():
     def dump(self, targetLayer):
         if targetLayer is None:
             return
-        if targetLayer.geometryType() == QGis.Polygon:
-            wkts = [vertex.wkt for vertex in self.vertices]
-            coordinates = [WKT_STRIP.sub('', wkt) for wkt in wkts]
-            coordinates.append(coordinates[0])
-                
-            wktType = 'Polygon'
-            extension = WKT_EXTENSIONS[self.vertices[0].wktDimensions - 2]
-            parts = '((' + ','.join(coordinates) + '))'
-        
-        newWkt = wktType + extension + parts
-        newFeature = QgsFeature()
-        newGeometry = QgsGeometry.fromWkt(newWkt)
-        newFeature.setGeometry(newGeometry)
-        
-        targetLayer.dataProvider().addFeatures([newFeature])
+        fieldDialog = FieldDialog(targetLayer)
+        result = fieldDialog.exec_()
+        if result == QDialog.Accepted:
+            if targetLayer.geometryType() == QGis.Polygon:
+                wkts = [vertex.wkt for vertex in self.vertices]
+                coordinates = [WKT_STRIP.sub('', wkt) for wkt in wkts]
+                coordinates.append(coordinates[0])
+                    
+                wktType = 'Polygon'
+                extension = WKT_EXTENSIONS[self.vertices[0].wktDimensions - 2]
+                parts = '((' + ','.join(coordinates) + '))'
+            
+            newWkt = wktType + extension + parts
+            newFeature = QgsFeature()
+            newGeometry = QgsGeometry.fromWkt(newWkt)
+            newFeature.setGeometry(newGeometry)
+            
+            targetLayer.dataProvider().addFeatures([newFeature])
         
     
     def dumpToFile(self, targetLayer):

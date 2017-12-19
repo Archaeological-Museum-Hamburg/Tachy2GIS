@@ -82,6 +82,7 @@ class Tachy2Gis:
         self.iface.setActiveLayer(activeLayer)
         self.vertices.updateAnchors(activeLayer)
         self.mapTool.setGeometryType(activeLayer)
+        self.dlg.mFieldComboBox.setLayer(self.dlg.targetLayerComboBox.currentLayer())
 
     
     def toggleEdit(self):
@@ -95,6 +96,7 @@ class Tachy2Gis:
     def targetChanged(self):
         if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
             self.dlg.sourceLayerComboBox.setLayer(self.dlg.targetLayerComboBox.currentLayer())
+        self.dlg.mFieldComboBox.setLayer(self.dlg.targetLayerComboBox.currentLayer())
     
     def synchLayers(self):
         if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
