@@ -27,6 +27,7 @@ from qgis.utils import iface
 
 from T2G_PolyPainter import *
 from Tachy2GIS_dialog import Tachy2GisDialog
+from FieldDialog import FieldDialog
 from pointProvider import PointProvider
 import resources
 
@@ -51,6 +52,12 @@ class Tachy2Gis:
         self.mapTool.clear()
         
     def dump(self):
+        self.fieldDialog.populateFieldTable()
+        result = self.fieldDialog.exec_()
+        if result == QDialog.Accepted:
+            return
+        else:
+            return
         layer = self.dlg.targetLayerComboBox.currentLayer()
         self.vertexTableModel.vertexList.dump(layer)
         self.mapTool.clear()
@@ -180,6 +187,7 @@ class Tachy2Gis:
         self.vertexTableModel = T2G_VertexTableModel(self.vertices)
         self.mapTool = T2G_PolyPainter(self)
         self.previousTool = None
+        self.fieldDialog = FieldDialog(self.iface.activeLayer())
         crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
         #self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
         #self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])

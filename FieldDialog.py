@@ -41,18 +41,24 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
         self.layer = layer
-        self.layerLabel.setText(self.layer.name())
-        self.attributeFields = []
-        for row, field in enumerate(self.layer.fields()):
-            fieldLabel = QtGui.QLabel(field.name())
-            self.gridLayout.addWidget(fieldLabel, row, 0)
-            inputField = QtGui.QLineEdit()
-            self.gridLayout.addWidget(inputField, row, 1)
-            self.attributeFields.append(inputField)
+        
+        self.targetLayerComboBox.setLayer(self.layer)
+        self.targetLayerComboBox.layerChanged.connect(self.populateFieldTable)
+    
+    def populateFieldTable(self): 
+        fields = self.layer.fields()
+        self.fieldTable.setColumnCount(2)
+        self.fieldTable.setRowCount(len(fields))
+        for row, field in enumerate(fields):
+            item = QtGui.QTableWidgetItem(field.name())
+            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            self.fieldTable.setItem(row, 0, item)
+            
         features = [feature for feature in self.layer.getFeatures()]
         if features:
             lastFeature = features[-1]
-            for i, attribute in enumerate(lastFeature.attributes()):
-                    self.attributeFields[i].setText(str(attribute))
-        
+            for row, attribute in enumerate(lastFeature.attributes()):
+                    self.fieldTable.setItem(row, 1, QtGui.QTableWidgetItem(str(attribute)))
+        self.setFixedSize(self.verticalLayout.sizeHint())
+
         
