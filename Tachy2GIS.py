@@ -55,6 +55,7 @@ class Tachy2Gis:
         self.fieldDialog.populateFieldTable()
         result = self.fieldDialog.exec_()
         if result == QDialog.Accepted:
+            fields = self.fieldDialog.getFields()
             return
         else:
             return
