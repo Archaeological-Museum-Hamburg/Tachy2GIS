@@ -70,18 +70,7 @@ class Tachy2Gis:
             self.previousTool = QgsMapToolPan(self.iface.mapCanvas())
         self.iface.mapCanvas().setMapTool(self.previousTool)
     
-    def setDumpEnabled(self):
-        if self.dlg.targetLayerComboBox.currentLayer() is None:
-            return
-        activeLayer = self.dlg.targetLayerComboBox.currentLayer()
-        editable = activeLayer.isEditable()
-        readOnly = activeLayer.readOnly()
-        verticesRequired = activeLayer.wkbType()
-        sufficientVertices = len(self.vertices) >= verticesRequired
-        #editable = True
-        self.dlg.dumpButton.setEnabled(editable and sufficientVertices and not readOnly)
-        self.dlg.dumpButton.setEnabled(True)
-    
+
     def setActiveLayer(self):
         activeLayer = self.dlg.sourceLayerComboBox.currentLayer()
         if activeLayer is None:
@@ -89,25 +78,14 @@ class Tachy2Gis:
         self.iface.setActiveLayer(activeLayer)
         self.vertices.updateAnchors(activeLayer)
         self.mapTool.setGeometryType(activeLayer)
-        self.dlg.mFieldComboBox.setLayer(self.dlg.targetLayerComboBox.currentLayer())
-
+       
     
     def toggleEdit(self):
         iface.actionToggleEditing().trigger()
         
     def sourceChanged(self):
-        if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
-            self.dlg.targetLayerComboBox.setLayer(self.dlg.sourceLayerComboBox.currentLayer())
-        self.setActiveLayer()
-    
-    def targetChanged(self):
-        if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
-            self.dlg.sourceLayerComboBox.setLayer(self.dlg.targetLayerComboBox.currentLayer())
-        self.dlg.mFieldComboBox.setLayer(self.dlg.targetLayerComboBox.currentLayer())
-    
-    def synchLayers(self):
-        if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
-            self.dlg.targetLayerComboBox.setLayer(self.dlg.sourceLayerComboBox.currentLayer())
+        #if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
+        #    self.dlg.targetLayerComboBox.setLayer(self.dlg.sourceLayerComboBox.currentLayer())
         self.setActiveLayer()
     
     # Interface code goes here:
@@ -130,23 +108,15 @@ class Tachy2Gis:
         
         self.dlg.sourceLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
-        self.dlg.sourceLayerComboBox.layerChanged.connect(self.setDumpEnabled)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.sourceChanged)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
-        
-        self.dlg.synchCheckBox.stateChanged.connect(self.synchLayers)
-        self.dlg.targetLayerComboBox.layerChanged.connect(self.targetChanged)
-        
+         
         """
         self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.targetLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.targetLayerComboBox.layerChanged.connect(self.setDumpEnabled)
         self.dlg.targetLayerComboBox.layerChanged.connect(self.mapTool.clear)
         """
-        
-        
-        self.vertexTableModel.layoutChanged.connect(self.setDumpEnabled)
-        self.setDumpEnabled()
 
     
     ## Constructor
