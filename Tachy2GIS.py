@@ -55,19 +55,16 @@ class Tachy2Gis:
         self.fieldDialog.populateFieldTable()
         result = self.fieldDialog.exec_()
         if result == QDialog.Accepted:
-            fieldMap = self.fieldDialog.fieldMap
             targetLayer = self.fieldDialog.layer
-            self.vertexTableModel.vertexList.dump(targetLayer, fieldMap)
-            
+            self.vertexTableModel.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
+            self.mapTool.clear()
+            targetLayer.dataProvider().forceReload()
+            targetLayer.triggerRepaint()
+            self.vertices.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
             return
         else:
             return
         
-        self.mapTool.clear()
-#         layer.dataProvider().forceReload()
-#         layer.triggerRepaint()
-#         self.vertices.updateAnchors(layer)
-    
     def restoreTool(self):
         if self.previousTool is None:
             self.previousTool = QgsMapToolPan(self.iface.mapCanvas())

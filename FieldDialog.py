@@ -32,6 +32,10 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 
 class FieldDialog(QtGui.QDialog, FORM_CLASS):
+    TYPE_MAP = {2:int,
+                4:int,
+                6:float,
+                10:unicode}
     def __init__(self, layer, parent=None):
         """Constructor."""
         super(FieldDialog, self).__init__(parent)
@@ -43,7 +47,7 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.layer = layer
         self.fieldTypes = []
-        self.fieldMap = []
+        self.fieldData = []
         
         self.targetLayerComboBox.setLayer(self.layer)
         self.targetLayerComboBox.layerChanged.connect(self.layerChanged)
@@ -54,6 +58,8 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         self.populateFieldTable()
     
     def populateFieldTable(self): 
+        if self.layer is None:
+            return
         fields = self.layer.fields()
         self.fieldTable.setColumnCount(2)
         self.fieldTable.setRowCount(len(fields))
@@ -63,8 +69,9 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
             self.fieldTable.setItem(row, 0, item)
             self.fieldTable.setItem(row, 1, None)
         
+        self.fieldTypes = [self.TYPE_MAP[field.type()] for field in fields]
+        
         features = [feature for feature in self.layer.getFeatures()]
-        self.fieldTypes = []
         if features:
             lastFeature = features[-1]
             for row, attribute in enumerate(lastFeature.attributes()):
@@ -77,12 +84,12 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         fieldNames = [self.fieldTable.item(row, 0).data(Qt.DisplayRole) for row in range(self.fieldTable.rowCount())]
         fieldItems = [self.fieldTable.item(row, 1) for row in range(self.fieldTable.rowCount())]
         fieldData = [item.data(Qt.EditRole) for item in fieldItems]
-        self.fieldMap = []
+        self.fieldData = []
         fields = zip(fieldNames, self.fieldTypes, fieldData)
         
-        for name, type, datum in fields:
+        for name, dataType, datum in fields:
             try:
-                self.fieldMap.append((name, type(datum)))
+                self.fieldData.append(dataType(datum))
             except ValueError:
                 message = "Could not convert value for field " + name + "\nto type " + str(type)
                 QMessageBox(QMessageBox.Critical,
@@ -91,12 +98,7 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
                             QMessageBox.Ok).exec_()
                 return 
         self.accept()
-        
-    def getFields(self):
-        #self.validateFields()
-        return self.fieldMap
-        
-        
+    
         
         
         

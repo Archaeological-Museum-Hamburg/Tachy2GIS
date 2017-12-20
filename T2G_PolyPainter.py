@@ -16,6 +16,7 @@ from FieldDialog import FieldDialog
 
 WKT_VALUES = re.compile(r"[\d\-\.]+")
 WKT_STRIP = re.compile(r"^\D+|\D+$")
+WKT_REMOVE_MEASURE = re.compile(r" \d+(?=[,)])")
 WKT_EXTENSIONS = [' ', 'Z ', 'ZM ']
 
 try:
@@ -146,14 +147,24 @@ class T2G_Vertex():
     def setWkt(self, wkt):
         self.wkt = wkt
         dimensions = WKT_VALUES.findall(wkt)
-        self.x, self.y, self.z = map(float, dimensions[:3])
+        self.x, self.y = map(float, dimensions[:2])
         self.wktDimensions = len(dimensions)
+        if self.wktDimensions >= 3:
+            self.z = float(dimensions[2])
+        else:
+            self.z = None
     
     def getMarker(self, canvas):
         marker = QgsVertexMarker(canvas)
         marker.setCenter(self.getQpoint())
         marker.setIconType(self.SHAPE_MAP[self.source])
         return marker
+    
+    def getCoords(self):
+        coords = [self.x, self.y]
+        if not self.z is None:
+            coords.append(self.z)
+        return coords
 
 ## The T2G_VertexList handles the painting and selection of vertices
 
@@ -271,7 +282,7 @@ class T2G_VertexList():
         self.vertices = []
     
     def getParts(self):
-        return [[[v.x, v.y, v.z] for v in self.vertices]]
+        return [[v.getCoords() for v in self.vertices]]
     
     def dump(self, targetLayer, fieldMap):
         if targetLayer is None:
@@ -286,16 +297,23 @@ class T2G_VertexList():
             parts = '((' + ','.join(coordinates) + '))'
         
         newWkt = wktType + extension + parts
-        newFeature = QgsFeature()
+        newFeature = QgsFeature(targetLayer.pendingFields())
         for name, value in fieldMap:
-            newFeature.addAttribute(name, value)
+            newFeature.setAttribute(name, value)
         newGeometry = QgsGeometry.fromWkt(newWkt)
         newFeature.setGeometry(newGeometry)
+        success, features = targetLayer.dataProvider().addFeatures([newFeature])
+        if not success:
+            newWkt = WKT_REMOVE_MEASURE.sub('', newWkt)
+            newWkt = newWkt.replace('ZM', 'Z')
+            newGeometry = QgsGeometry.fromWkt(newWkt)
+            newFeature.setGeometry(newGeometry)
+            targetLayer.dataProvider().addFeatures([newFeature])
+            pass
         
-        targetLayer.dataProvider().addFeatures([newFeature])
     
     
-    def dumpToFile(self, targetLayer):
+    def dumpToFile(self, targetLayer, fieldData):
         if targetLayer is None:
             return
         if not targetLayer.dataProvider().name() == u'ogr':
@@ -303,14 +321,19 @@ class T2G_VertexList():
         dataUri = targetLayer.dataProvider().dataSourceUri()
         targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
         reader = shapefile.Reader(targetFileName)
-        writer = shapefile.Writer(shapefile.POLYGONZ)
+        if self.vertices[0].wktDimensions > 2:
+            shapeType = shapefile.POLYGONZ
+        else:
+            shapeType = shapefile.POLYGON
+        writer = shapefile.Writer(shapeType)
         writer.fields = list(reader.fields)
         writer.records.extend(reader.records())
         writer._shapes.extend(reader.shapes())
         l = len(writer.shapes())
         vertexParts = self.getParts()
-        writer.poly(parts = vertexParts, shapeType = shapefile.POLYGONZ)
-        writer.record(id=8)
+        writer.poly(parts = vertexParts, shapeType = shapeType)
+        #writer.record(recordDict = dict(fieldMap))
+        writer.record(*fieldData)
         l = len(writer.shapes())
         writer.save(targetFileName)
         
