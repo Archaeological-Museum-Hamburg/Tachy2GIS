@@ -25,7 +25,7 @@ from PyQt4 import QtGui, uic
 from PyQt4.QtCore import *
 import os
 from PyQt4.Qt import QMessageBox
-
+from dateutil import parser as dateTimeParser
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'FieldDialog.ui'))
@@ -35,7 +35,8 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
     TYPE_MAP = {2:int,
                 4:int,
                 6:float,
-                10:unicode}
+                10:unicode,
+                14:dateTimeParser.parse}
     def __init__(self, layer, parent=None):
         """Constructor."""
         super(FieldDialog, self).__init__(parent)
@@ -91,10 +92,9 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
             try:
                 self.fieldData.append(dataType(datum))
             except ValueError:
-                message = "Could not convert value for field " + name + "\nto type " + str(type)
                 QMessageBox(QMessageBox.Critical,
-                            "Invalid data type",
-                            message,
+                            "Invalid data format.",
+                            "Could not convert value for field " + name + "\nusing " + str(type),
                             QMessageBox.Ok).exec_()
                 return 
         self.accept()
