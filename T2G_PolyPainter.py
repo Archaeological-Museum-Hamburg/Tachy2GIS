@@ -273,11 +273,9 @@ class T2G_VertexList():
     def getParts(self):
         return [[[v.x, v.y, v.z] for v in self.vertices]]
     
-    def dump(self, targetLayer):
+    def dump(self, targetLayer, fieldMap):
         if targetLayer is None:
             return
-        
-        
         if targetLayer.geometryType() == QGis.Polygon:
             wkts = [vertex.wkt for vertex in self.vertices]
             coordinates = [WKT_STRIP.sub('', wkt) for wkt in wkts]
@@ -289,6 +287,8 @@ class T2G_VertexList():
         
         newWkt = wktType + extension + parts
         newFeature = QgsFeature()
+        for name, value in fieldMap:
+            newFeature.addAttribute(name, value)
         newGeometry = QgsGeometry.fromWkt(newWkt)
         newFeature.setGeometry(newGeometry)
         

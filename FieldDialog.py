@@ -43,7 +43,7 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.layer = layer
         self.fieldTypes = []
-        self.fieldData = []
+        self.fieldMap = []
         
         self.targetLayerComboBox.setLayer(self.layer)
         self.targetLayerComboBox.layerChanged.connect(self.layerChanged)
@@ -77,12 +77,12 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         fieldNames = [self.fieldTable.item(row, 0).data(Qt.DisplayRole) for row in range(self.fieldTable.rowCount())]
         fieldItems = [self.fieldTable.item(row, 1) for row in range(self.fieldTable.rowCount())]
         fieldData = [item.data(Qt.EditRole) for item in fieldItems]
-        self.fieldData = []
+        self.fieldMap = []
         fields = zip(fieldNames, self.fieldTypes, fieldData)
         
         for name, type, datum in fields:
             try:
-                self.fieldData.append(type(datum))
+                self.fieldMap.append((name, type(datum)))
             except ValueError:
                 message = "Could not convert value for field " + name + "\nto type " + str(type)
                 QMessageBox(QMessageBox.Critical,
@@ -94,7 +94,7 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         
     def getFields(self):
         #self.validateFields()
-        return self.fieldData
+        return self.fieldMap
         
         
         
