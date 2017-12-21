@@ -55,6 +55,8 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         self.buttonBox.accepted.connect(self.validateFields)
     
     def layerChanged(self):
+        if QtGui is None:
+            return
         self.layer = self.targetLayerComboBox.currentLayer()
         self.populateFieldTable()
     
