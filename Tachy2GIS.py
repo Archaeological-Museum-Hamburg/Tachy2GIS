@@ -57,7 +57,10 @@ class Tachy2Gis:
         if result == QDialog.Accepted:
             targetLayer = self.fieldDialog.layer
             self.vertexTableModel.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
-            self.mapTool.clear()
+            if self.fieldDialog.targetLayerComboBox.currentLayer().geometryType() == 0:
+                self.mapTool.deleteVertex()
+            else:
+                self.mapTool.clear()
             targetLayer.dataProvider().forceReload()
             targetLayer.triggerRepaint()
             self.vertices.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())

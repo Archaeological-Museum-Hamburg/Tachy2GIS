@@ -337,6 +337,19 @@ class T2G_VertexList():
         vertexParts = self.getParts()
         writer.line(parts=vertexParts, shapeType=shapeType)
         return writer
+    
+    def writePoint(self, reader):
+        if self.vertices[0].wktDimensions > 2:
+            shapeType = shapefile.POINTZ
+        else:
+            shapeType = shapefile.POINT
+        writer = shapefile.Writer(shapeType)
+        writer.fields = list(reader.fields)
+        writer.records.extend(reader.records())
+        writer._shapes.extend(reader.shapes())
+        coords = self.vertices[self.selected].getCoords()
+        writer.point(*coords, shapeType=shapeType)
+        return writer
 
     def dumpToFile(self, targetLayer, fieldData):
         if targetLayer is None:
@@ -351,6 +364,9 @@ class T2G_VertexList():
             writer = self.writePoly(reader)
         elif targetType in (shapefile.POLYLINE, shapefile.POLYLINEZ):
             writer = self.writeLine(reader)
+        elif targetType in (shapefile.POINT, shapefile.POINTZ):
+            writer = self.writePoint(reader)
+            
         else:
             return
         #writer.record(recordDict = dict(fieldMap))
