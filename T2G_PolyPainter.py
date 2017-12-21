@@ -311,16 +311,8 @@ class T2G_VertexList():
             targetLayer.dataProvider().addFeatures([newFeature])
             pass
         
-    
-    
-    def dumpToFile(self, targetLayer, fieldData):
-        if targetLayer is None:
-            return
-        if not targetLayer.dataProvider().name() == u'ogr':
-            return
-        dataUri = targetLayer.dataProvider().dataSourceUri()
-        targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
-        reader = shapefile.Reader(targetFileName)
+
+    def writePoly(self, reader):
         if self.vertices[0].wktDimensions > 2:
             shapeType = shapefile.POLYGONZ
         else:
@@ -329,12 +321,40 @@ class T2G_VertexList():
         writer.fields = list(reader.fields)
         writer.records.extend(reader.records())
         writer._shapes.extend(reader.shapes())
-        l = len(writer.shapes())
         vertexParts = self.getParts()
-        writer.poly(parts = vertexParts, shapeType = shapeType)
+        writer.poly(parts=vertexParts, shapeType=shapeType)
+        return writer
+    
+    def writeLine(self, reader):
+        if self.vertices[0].wktDimensions > 2:
+            shapeType = shapefile.POLYLINEZ
+        else:
+            shapeType = shapefile.POLYLINE
+        writer = shapefile.Writer(shapeType)
+        writer.fields = list(reader.fields)
+        writer.records.extend(reader.records())
+        writer._shapes.extend(reader.shapes())
+        vertexParts = self.getParts()
+        writer.line(parts=vertexParts, shapeType=shapeType)
+        return writer
+
+    def dumpToFile(self, targetLayer, fieldData):
+        if targetLayer is None:
+            return
+        if not targetLayer.dataProvider().name() == u'ogr':
+            return
+        dataUri = targetLayer.dataProvider().dataSourceUri()
+        targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
+        reader = shapefile.Reader(targetFileName)
+        targetType = reader.shapeType
+        if targetType in (shapefile.POLYGON, shapefile.POLYGONZ):
+            writer = self.writePoly(reader)
+        elif targetType in (shapefile.POLYLINE, shapefile.POLYLINEZ):
+            writer = self.writeLine(reader)
+        else:
+            return
         #writer.record(recordDict = dict(fieldMap))
         writer.record(*fieldData)
-        l = len(writer.shapes())
         writer.save(targetFileName)
         
 
