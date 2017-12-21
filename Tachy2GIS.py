@@ -77,7 +77,10 @@ class Tachy2Gis:
             return
         self.iface.setActiveLayer(activeLayer)
         self.vertices.updateAnchors(activeLayer)
-        self.mapTool.setGeometryType(activeLayer)
+        
+    def targetChanged(self):
+        targetLayer = self.fieldDialog.targetLayerComboBox.currentLayer()
+        self.mapTool.setGeometryType(targetLayer)
        
     
     def toggleEdit(self):
@@ -110,6 +113,8 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.sourceChanged)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
+        
+        self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
          
         """
         self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
@@ -286,6 +291,7 @@ class Tachy2Gis:
         # show the dialog
         self.previousTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.mapTool)
+        self.mapTool.alive = True
         self.sourceChanged()
         self.setActiveLayer()
         self.dlg.show()

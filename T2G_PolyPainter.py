@@ -426,10 +426,16 @@ class T2G_PolyPainter(QgsMapTool):
         self.rubberBand.setWidth(1)
         self.markers = []
         self.reset()
+        self.alive = False
         
-    def setGeometryType(self,layer):
+    def setGeometryType(self, layer):
+        if not self.alive:
+            return
         self.geometryType = layer.geometryType()
-        self.reset()
+        geometry = self.rubberBand.asGeometry()
+        self.rubberBand.reset(self.geometryType)
+        self.rubberBand.addGeometry(geometry, layer)
+        
     
     ## Reset the rubber band and clean up markers
     def reset(self):
