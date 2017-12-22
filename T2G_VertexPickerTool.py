@@ -83,10 +83,16 @@ class T2G_VertexePickerTool(QgsMapTool):
         
     ## Finds the nearest existing 3D vertex, and adds it to the vertex list
     def canvasReleaseEvent(self, event):
-        x = event.pos().x()
-        y = event.pos().y()
-        point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
-        self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)
+        if self.vertexList.hasAnchors():
+            x = event.pos().x()
+            y = event.pos().y()
+            point = self.canvas.getCoordinateTransform().toMapCoordinates(x, y)
+            self.addVertex(None, T2G_Vertex.SOURCE_INTERNAL, point.x(), point.y(), None)            
+        else:
+            QMessageBox(QMessageBox.Critical,
+                        "No Anchors Available",
+                        "Current layer has no anchors to snap to.",
+                        QMessageBox.Ok).exec_()
         
     def selectVertex(self):
         selection = self.parent.dlg.vertexTableView.selectionModel().selectedRows()
