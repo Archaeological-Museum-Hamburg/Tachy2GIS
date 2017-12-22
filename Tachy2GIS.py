@@ -56,14 +56,14 @@ class Tachy2Gis:
         result = self.fieldDialog.exec_()
         if result == QDialog.Accepted:
             targetLayer = self.fieldDialog.layer
-            self.vertexTableModel.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
+            self.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
             if self.fieldDialog.targetLayerComboBox.currentLayer().geometryType() == 0:
                 self.mapTool.deleteVertex()
             else:
                 self.mapTool.clear()
             targetLayer.dataProvider().forceReload()
             targetLayer.triggerRepaint()
-            self.vertices.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
+            self.vertexList.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
         else:
             return
         
@@ -78,7 +78,7 @@ class Tachy2Gis:
         if activeLayer is None:
             return
         self.iface.setActiveLayer(activeLayer)
-        self.vertices.updateAnchors(activeLayer)
+        self.vertexList.updateAnchors(activeLayer)
         
     def targetChanged(self):
         targetLayer = self.fieldDialog.targetLayerComboBox.currentLayer()
@@ -103,8 +103,8 @@ class Tachy2Gis:
         self.dlg.dumpButton.clicked.connect(self.dump)
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         
-        self.dlg.vertexTableView.setModel(self.vertexTableModel)
-        self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexTableModel))
+        self.dlg.vertexTableView.setModel(self.vertexList)
+        self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
         self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
         
         self.dlg.finished.connect(self.restoreTool)
@@ -159,9 +159,8 @@ class Tachy2Gis:
         
         ## From here: Own additions
         self.pointProvider = PointProvider()
-        self.vertices = T2G_VertexList()
+        self.vertexList = T2G_VertexList()
         
-        self.vertexTableModel = T2G_VertexTableModel(self.vertices)
         self.mapTool = T2G_PolyPainter(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())

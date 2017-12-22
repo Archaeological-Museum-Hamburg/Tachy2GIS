@@ -186,17 +186,20 @@ class T2G_Vertex():
         else:
             return (self.x, self.y, self.z)
 
+
 ## The T2G_VertexList handles the painting and selection of vertices
 #  it also pulls existing vertices from a vector layer to use them as anchors when
 #  manually creating vertices.
-class T2G_VertexList():
+class T2G_VertexList(QAbstractTableModel):
     ## The color of unselected vertice
     VERTEX_COLOR = Qt.red
     ### Selected vertices get a different color
     SELECTED_COLOR = Qt.green
     
     
-    def __init__(self, vertices = []):
+    def __init__(self, vertices = [], parent = None, *args):
+        QAbstractTableModel.__init__(self, parent, *args)
+        self.columnCount = len(T2G_Vertex().fields())
         self.vertices = vertices
         self.colors = []
         self.shapes = []
@@ -206,6 +209,35 @@ class T2G_VertexList():
         self.maxIndex = None
         self.updateThread = QThread()
         self.anchorUpdater = None
+        
+    def rowCount(self, *args, **kwargs):
+        return len(self)
+    
+    def columnCount(self, *args, **kwargs):
+        return self.columnCount
+    
+    def data(self, index, role):
+        if Qt is None:
+            return
+        if not index.isValid():
+            return
+        elif role != Qt.DisplayRole:
+            return
+        row = index.row()
+        col = index.column()
+        vertex = self.vertices[row]
+        field = vertex.fields()[col]
+        return field
+    
+    def headerData(self, section, orientation, role):
+        if Qt is None:
+            return
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            headers = T2G_Vertex().headers
+            return headers[section]
+        return QAbstractTableModel.headerData(self, section, orientation, role)
+    
+    
     
     ## this method updates anchor points for snapping
     #  extracting all vertices from the geometeries in a layer may take some time,
@@ -263,6 +295,11 @@ class T2G_VertexList():
     def __getitem__(self, index):
         return self.vertices.__getitem__(index)
     
+    def addVertex(self, vertex):
+        adjusted = self.vertexList.append(vertex)
+        
+        return adjusted
+    
     def append(self, vertex):
         if vertex.source == T2G_Vertex.SOURCE_INTERNAL:
             anchorId = self.anchorIndex.nearestNeighbor(QgsPoint(vertex.x,vertex.y), 1)
@@ -270,10 +307,12 @@ class T2G_VertexList():
                 wkt = self.anchorPoints[anchorId[0]]
                 vertex.setWkt(wkt)
         self.vertices.append(vertex)
+        self.layoutChanged.emit()
         return vertex
     
     def deleteVertex(self, index):
         del self.vertices[index]
+        self.layoutChanged.emit()
     
     def select(self, index):
         if index >= len(self):
@@ -303,6 +342,7 @@ class T2G_VertexList():
     
     def clear(self):
         self.vertices = []
+        self.layoutChanged.emit()
     
     def getParts(self):
         return [[v.getCoords() for v in self.vertices]]
@@ -397,51 +437,7 @@ class T2G_VertexList():
         writer.save(targetFileName)
         
 
-class T2G_VertexTableModel(QAbstractTableModel):
-    def __init__(self, vertexList, parent = None, *args):
-        QAbstractTableModel.__init__(self, parent, *args)
-        self.columnCount = len(T2G_Vertex().fields())
-        self.vertexList = vertexList
 
-    def rowCount(self, *args, **kwargs):
-        return len(self.vertexList)
-    
-    def columnCount(self, *args, **kwargs):
-        return self.columnCount
-    
-    def data(self, index, role):
-        if Qt is None:
-            return
-        if not index.isValid():
-            return
-        elif role != Qt.DisplayRole:
-            return
-        row = index.row()
-        col = index.column()
-        vertex = self.vertexList[row]
-        field = vertex.fields()[col]
-        return field
-    
-    def addVertex(self, vertex):
-        adjusted = self.vertexList.append(vertex)
-        self.layoutChanged.emit()
-        return adjusted
-    
-    def deleteVertex(self, index):
-        self.vertexList.deleteVertex(index)
-        self.layoutChanged.emit()
-    
-    def headerData(self, section, orientation, role):
-        if Qt is None:
-            return
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            headers = T2G_Vertex().headers
-            return headers[section]
-        return QAbstractTableModel.headerData(self, section, orientation, role)
-    
-    def clear(self):
-        self.vertexList.clear()
-        self.layoutChanged.emit()
 ## T2G_PolyPainter
 #
 # This is the map tool that allows the plugin to draw shapes on the map canvas
@@ -457,7 +453,7 @@ class T2G_PolyPainter(QgsMapTool):
         self.parent = parent
         self.canvas = parent.iface.mapCanvas()
         #self.emitPoint = QgsMapToolEmitPoint(self.canvas)
-        self.tableModel = parent.vertexTableModel
+        self.vertexList = parent.vertexList
         self.rubberBand = QgsRubberBand(self.canvas, QGis.Polygon)
         self.geometryType = QGis.Polygon
         self.rubberBand.setColor(self.RB_COLOR)
@@ -485,7 +481,7 @@ class T2G_PolyPainter(QgsMapTool):
     ## Adds a new vertex to the attached table model, the rubber band and the vertex markers
     def addVertex(self, label = None, source = None, x = None, y = None, z = None):
         vertex = T2G_Vertex(label, source, x, y, z)
-        adjusted = self.tableModel.addVertex(vertex)
+        adjusted = self.vertexList.append(vertex)
         self.rubberBand.addPoint(adjusted.getQpoint(), True)
         index = len(self.markers)
         self.markers.append(adjusted.getMarker(self.canvas))
@@ -499,7 +495,7 @@ class T2G_PolyPainter(QgsMapTool):
             self.rubberBand.removePoint(index)
             self.markers[index].hide()
             del self.markers[index]
-            self.tableModel.deleteVertex(index)
+            self.vertexList.deleteVertex(index)
             lastRow = len(self.markers) - 1
             if lastRow >= 0:
                 self.parent.dlg.vertexTableView.selectRow(lastRow)
@@ -510,7 +506,7 @@ class T2G_PolyPainter(QgsMapTool):
         for marker in self.markers:
             self.canvas.scene().removeItem(marker)
         self.reset()
-        self.tableModel.clear()
+        self.vertexList.clear()
         
     ## Finds the nearest existing 3D vertex, and adds it to the vertex list
     def canvasReleaseEvent(self, event):
@@ -523,8 +519,8 @@ class T2G_PolyPainter(QgsMapTool):
         selection = self.parent.dlg.vertexTableView.selectionModel().selectedRows()
         if selection:
             index = selection[0].row()
-            self.tableModel.vertexList.select(index)
-            markerColors = self.tableModel.vertexList.getColors()
+            self.vertexList.select(index)
+            markerColors = self.vertexList.getColors()
             for marker, color in zip(self.markers, markerColors):
                 marker.setColor(color)
             self.canvas.refresh()
