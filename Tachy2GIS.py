@@ -118,13 +118,6 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
         
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
-         
-        """
-        self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
-        self.dlg.targetLayerComboBox.setLayer(self.iface.activeLayer())
-        self.dlg.targetLayerComboBox.layerChanged.connect(self.setDumpEnabled)
-        self.dlg.targetLayerComboBox.layerChanged.connect(self.mapTool.clear)
-        """
 
     
     ## Constructor
