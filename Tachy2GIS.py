@@ -64,7 +64,6 @@ class Tachy2Gis:
             targetLayer.dataProvider().forceReload()
             targetLayer.triggerRepaint()
             self.vertices.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
-            return
         else:
             return
         

@@ -32,6 +32,9 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 
 class FieldDialog(QtGui.QDialog, FORM_CLASS):
+    ## This constant is used to map field data types to python data types.
+    #  As demonstrated by the dateTimeParser, this can be any function that
+    #  takes a single argument.
     TYPE_MAP = {2:int,
                 4:int,
                 6:float,
@@ -66,14 +69,17 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
         fields = self.layer.fields()
         self.fieldTable.setColumnCount(2)
         self.fieldTable.setRowCount(len(fields))
+        # The first column is populated with the names of the fields and set to 'not editable' 
         for row, field in enumerate(fields):
             item = QtGui.QTableWidgetItem(field.name())
             item.setFlags(item.flags() ^ Qt.ItemIsEditable)
             self.fieldTable.setItem(row, 0, item)
             self.fieldTable.setItem(row, 1, None)
-        
+        # QGIS gives field data types as integers. The TYPE_MAP translates these
+        # to python types 
         self.fieldTypes = [self.TYPE_MAP[field.type()] for field in fields]
-        
+        # If there are features in the layer, the records of the last one are 
+        # used as default values to populate the second column
         features = [feature for feature in self.layer.getFeatures()]
         if features:
             lastFeature = features[-1]
@@ -82,7 +88,10 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
                 self.fieldTable.setItem(row, 1, QtGui.QTableWidgetItem(str(attribute)))
                     
         self.setFixedSize(self.verticalLayout.sizeHint())
-        
+    
+    ## Checks if entered values can be cast to the required data type and does
+    #  so when possible. This is necessary because cell contents in a 
+    #  QTableWidget are converted to string for displaying.
     def validateFields(self):
         fieldNames = [self.fieldTable.item(row, 0).data(Qt.DisplayRole) for row in range(self.fieldTable.rowCount())]
         fieldItems = [self.fieldTable.item(row, 1) for row in range(self.fieldTable.rowCount())]
@@ -94,9 +103,10 @@ class FieldDialog(QtGui.QDialog, FORM_CLASS):
             try:
                 self.fieldData.append(dataType(datum))
             except ValueError:
+                # if a cast is impossible, the process is aborted and a message is displayed
                 QMessageBox(QMessageBox.Critical,
                             "Invalid data format.",
-                            "Could not convert value for field " + name + "\nusing " + str(type),
+                            "Could not convert value for field " + name + "\nusing " + str(dataType),
                             QMessageBox.Ok).exec_()
                 return 
         self.accept()

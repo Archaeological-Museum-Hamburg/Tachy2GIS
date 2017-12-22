@@ -24,13 +24,18 @@ try:
 except ImportError:
     print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
     raise
-
+## Updating anchor points that are used to enable snapping when manually adding 
+#  geometries is delegated to its own thread. This class is required to do that.
 class AnchorUpdater(QObject):
+    # The thread uses signals to communicate its progress to the AnchorUpdateDialog
     signalGeometriesProgress = pyqtSignal(int)
     signalAnchorCount = pyqtSignal(int)
     signalAnchorProgress = pyqtSignal(int)
     signalFinished = pyqtSignal()
     
+    ## Constructor
+    #  @param parent Not used
+    #  @param layer The vector layer which is to be scanned for vertices    
     def __init__(self, parent = None, layer = None):
         super(self.__class__, self).__init__(parent)
         self.layer = layer
@@ -39,6 +44,8 @@ class AnchorUpdater(QObject):
         self.abort = False
         self._mutex =QMutex()
     
+    
+    ## A slot to receive the 'Abort' signal from the AnchorUpdateDialog
     @pyqtSlot()
     def abortExtraction(self):
         self._mutex.lock()
@@ -60,6 +67,8 @@ class AnchorUpdater(QObject):
             except:
                 pass
             self.signalGeometriesProgress.emit(i)
+            # frequently forcing event processing is required to actually update
+            # the progress bars and to be able to receive the abort signal 
             qApp.processEvents()
             if self.abort: 
                 self.anchorPoints = []
@@ -115,9 +124,9 @@ class T2G_Vertex():
     
     
     ## Constructor
-    # @param label Point number or identifier
-    # @param source Should be one of the defined source keywords
-    # @param x,y,z Vertex coordinates
+    #  @param label Point number or identifier
+    #  @param source Should be one of the defined source keywords
+    #  @param x,y,z Vertex coordinates
     def __init__(self, label = None, source = None, x = None, y = None, z = None, wkt = ""):
         self.label = str(label)
         self.source = source
@@ -138,37 +147,47 @@ class T2G_Vertex():
     def fields(self):
         return [self.label, self.source, self.x, self.y, self.z]
     
+    ## Returns a 2D QgsPoint. Currently only used in getMarker()
     def getQpoint(self):
         return QgsPoint(self.x, self.y)
     
     def setXyz(self, xyz):
         self.x, self.y, self.z = xyz
     
+    ## Sets the vertex' coordinates from Well Known Text
+    #  @param wkt A string containing at least two numbers
     def setWkt(self, wkt):
         self.wkt = wkt
+        # a regex extracts all numbers from the wkt
         dimensions = WKT_VALUES.findall(wkt)
+        # x and y are assumed to be present
         self.x, self.y = map(float, dimensions[:2])
         self.wktDimensions = len(dimensions)
+        # if there are at least three dimensions, z is extracted as well
         if self.wktDimensions >= 3:
             self.z = float(dimensions[2])
         else:
             self.z = None
     
+    ## Gives you a marker to draw on the map canvas. The shape depends on the
+    #  source of the vertex, to help distinguishing between manually created
+    #  vertices and external ones
     def getMarker(self, canvas):
         marker = QgsVertexMarker(canvas)
         marker.setCenter(self.getQpoint())
         marker.setIconType(self.SHAPE_MAP[self.source])
         return marker
     
+    ## Returns the points' coordinates as a tuple. The tuple's length corresponds
+    #  to the actually populated dimensions to avoid upsetting the shapefile export.
     def getCoords(self):
-        coords = [self.x, self.y]
-        if not self.z is None:
-            coords.append(self.z)
-        return coords
+        if self.wktDimensions == 2:
+            return (self.x, self.y)
+        else:
+            return (self.x, self.y, self.z)
 
 ## The T2G_VertexList handles the painting and selection of vertices
-
-#  it also pulls existing vertices from a shapefile to use them as anchors when
+#  it also pulls existing vertices from a vector layer to use them as anchors when
 #  manually creating vertices.
 class T2G_VertexList():
     ## The color of unselected vertice
@@ -211,8 +230,9 @@ class T2G_VertexList():
         aud.geometriesBar.setMaximum(layer.featureCount())
         aud.geometriesBar.setValue(0)
         aud.anchorBar.setValue(0)
+        # the layer is passed to the anchorUpdater and the updater is moved to
+        # a new thread
         self.anchorUpdater = AnchorUpdater(layer = layer)
-
         self.anchorUpdater.moveToThread(self.updateThread)
         self.updateThread.start()
         self.anchorUpdater.signalAnchorCount.connect(aud.setAnchorCount)
@@ -220,6 +240,9 @@ class T2G_VertexList():
         self.anchorUpdater.signalGeometriesProgress.connect(aud.geometriesProgress)
         aud.show()
         self.anchorUpdater.startExtraction()
+        # the abort method of the updater clears its index and points list, so
+        # we can just use them, even if we aborted. They will be empty in that 
+        # case. 
         self.anchorIndex = self.anchorUpdater.anchorIndex
         self.anchorPoints = self.anchorUpdater.anchorPoints
         
@@ -249,7 +272,7 @@ class T2G_VertexList():
         self.vertices.append(vertex)
         return vertex
     
-    def deleteVertex(self,index):
+    def deleteVertex(self, index):
         del self.vertices[index]
     
     def select(self, index):
