@@ -25,7 +25,8 @@ from PyQt4.QtGui import QAction, QIcon
 import os.path
 from qgis.utils import iface
 
-from T2G_PolyPainter import *
+from T2G_VertexPickerTool import *
+from T2G_VertexList import T2G_VertexList
 from Tachy2GIS_dialog import Tachy2GisDialog
 from FieldDialog import FieldDialog
 from pointProvider import PointProvider
@@ -161,7 +162,7 @@ class Tachy2Gis:
         self.pointProvider = PointProvider()
         self.vertexList = T2G_VertexList()
         
-        self.mapTool = T2G_PolyPainter(self)
+        self.mapTool = T2G_VertexePickerTool(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
         crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
