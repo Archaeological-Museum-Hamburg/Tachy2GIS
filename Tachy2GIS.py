@@ -36,8 +36,6 @@ import resources
 
 # Import the code for the dialog
 
-    
-
 
 class Tachy2Gis:
     
@@ -47,32 +45,38 @@ class Tachy2Gis:
     def drawPoint(self):
         x, y, z = self.pointProvider.getPoint()
         self.mapTool.addVertex(None, T2G_Vertex.SOURCE_EXTERNAL, x, y, z)
-        
-    
+
+    ## Clears the map canvas and in turn the vertexList
     def clearCanvas(self):
         self.mapTool.clear()
-        
+
+    ## Opens the field dialog in preparation of dumping new vertices to the target layer
     def dump(self):
+        # the input table of the dialog is updated
         self.fieldDialog.populateFieldTable()
         result = self.fieldDialog.exec_()
         if result == QDialog.Accepted:
             targetLayer = self.fieldDialog.layer
             self.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
+            # if the target layer holds point geometries, only the currently selected vertex is dumped and
+            # removed from the list
             if self.fieldDialog.targetLayerComboBox.currentLayer().geometryType() == 0:
                 self.mapTool.deleteVertex()
             else:
+                # otherwise the list is cleared
                 self.mapTool.clear()
             targetLayer.dataProvider().forceReload()
             targetLayer.triggerRepaint()
             self.vertexList.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
         else:
             return
-        
+
+    ## Restores the map tool to the one that was active before T2G was started
+    #  The pan tool is the default tool used by QGIS
     def restoreTool(self):
         if self.previousTool is None:
             self.previousTool = QgsMapToolPan(self.iface.mapCanvas())
         self.iface.mapCanvas().setMapTool(self.previousTool)
-    
 
     def setActiveLayer(self):
         activeLayer = self.dlg.sourceLayerComboBox.currentLayer()
@@ -84,16 +88,10 @@ class Tachy2Gis:
     def targetChanged(self):
         targetLayer = self.fieldDialog.targetLayerComboBox.currentLayer()
         self.mapTool.setGeometryType(targetLayer)
-       
-    
+
     def toggleEdit(self):
         iface.actionToggleEditing().trigger()
-        
-    def sourceChanged(self):
-        #if self.dlg.synchCheckBox.isChecked() and not (self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer()):
-        #    self.dlg.targetLayerComboBox.setLayer(self.dlg.sourceLayerComboBox.currentLayer())
-        self.setActiveLayer()
-    
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
@@ -114,7 +112,7 @@ class Tachy2Gis:
         
         self.dlg.sourceLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
-        self.dlg.sourceLayerComboBox.layerChanged.connect(self.sourceChanged)
+        self.dlg.sourceLayerComboBox.layerChanged.connect(self.setActiveLayer)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
         
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
@@ -162,8 +160,6 @@ class Tachy2Gis:
         #self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
         #self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])
         #self.vertexLayer.updateFields()
-        
-        
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -179,7 +175,6 @@ class Tachy2Gis:
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('Tachy2Gis', message)
-
 
     def add_action(
         self,
@@ -268,7 +263,6 @@ class Tachy2Gis:
             callback=self.run,
             parent=self.iface.mainWindow())
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -279,15 +273,13 @@ class Tachy2Gis:
         # remove the toolbar
         del self.toolbar
 
-
     def run(self):
         """Run method that performs all the real work"""
      
-        # show the dialog
+        # Store the active map tool and switch to the T2G_VertexPickerTool
         self.previousTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.mapTool)
         self.mapTool.alive = True
-        self.sourceChanged()
         self.setActiveLayer()
         self.dlg.show()
 
@@ -299,5 +291,3 @@ class Tachy2Gis:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
-        
-        

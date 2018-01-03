@@ -7,7 +7,6 @@ from qgis.core import *
 from qgis.gui import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from docutils.parsers.rst.roles import role
 import os.path
 import re
 from AnchorUpdateDialog import AnchorUpdateDialog
@@ -31,7 +30,8 @@ except ImportError:
     raise
 ## Updating anchor points that are used to enable snapping when manually adding 
 #  geometries is delegated to its own thread. This class is required to do that.
-#  The implementation is based on this example: https://stackoverflow.com/questions/6783194/background-thread-with-qthread-in-pyqt#6789205
+#  The implementation is based on this example:
+#  https://stackoverflow.com/questions/6783194/background-thread-with-qthread-in-pyqt#6789205
 class AnchorUpdater(QObject):
     # The thread uses signals to communicate its progress to the AnchorUpdateDialog
     signalGeometriesProgress = pyqtSignal(int)
@@ -49,16 +49,14 @@ class AnchorUpdater(QObject):
         self.anchorIndex = QgsSpatialIndex()
         self.abort = False
         self._mutex =QMutex()
-    
-    
+
     ## A slot to receive the 'Abort' signal from the AnchorUpdateDialog.
     @pyqtSlot()
     def abortExtraction(self):
         self._mutex.lock()
         self.abort = True
         self._mutex.unlock()
-        
-    
+
     ## The main worker method
     #  getting all features and making sure they have geometries that can be
     #  exported to wkt. This solution with expection handling has been chosen
@@ -138,7 +136,7 @@ class T2G_Vertex():
     #  @param source Should be one of the defined source keywords
     #  @param x,y,z Vertex coordinates
     #  @param wkt allows to pass a wkt string containing coordinates to the ctor.
-    #             If at the same time x, y and z are passed, their values will be overwriten
+    #             If at the same time x, y and z are passed, their values will be overwritten
     def __init__(self, label = None, source = None, x = None, y = None, z = None, wkt = ""):
         self.label = str(label)
         self.source = source
@@ -149,7 +147,6 @@ class T2G_Vertex():
         self.wktDimensions = 0
         if not wkt == "":
             self.setWkt(wkt)
-    
 
     ## list of fields used to feed a table model
     #  @return a list containing string for label an source and floats for x, y, z
@@ -233,8 +230,7 @@ class T2G_VertexList(QAbstractTableModel):
     ## Reimplemented from QAbstractTableModel
     def rowCount(self, *args, **kwargs):
         return len(self)
-    
-    
+
     ## Reimplemented from QAbstractTableModel
     def columnCount(self, *args, **kwargs):
         return self.columnCount
@@ -261,9 +257,7 @@ class T2G_VertexList(QAbstractTableModel):
             headers = T2G_Vertex.HEADERS
             return headers[section]
         return QAbstractTableModel.headerData(self, section, orientation, role)
-    
-    
-    
+
     ## this method updates anchor points for snapping
     #  extracting all vertices from the geometries in a layer may take some time,
     #  so the method reports its progress via a dialog that allows aborting the 
@@ -288,7 +282,7 @@ class T2G_VertexList(QAbstractTableModel):
         aud.anchorBar.setValue(0)
         # the layer is passed to the anchorUpdater and the updater is moved to
         # a new thread
-        self.anchorUpdater = AnchorUpdater(layer = layer)
+        self.anchorUpdater = AnchorUpdater(layer=layer)
         self.anchorUpdater.moveToThread(self.updateThread)
         self.updateThread.start()
         self.anchorUpdater.signalAnchorCount.connect(aud.setAnchorCount)
@@ -459,4 +453,3 @@ class T2G_VertexList(QAbstractTableModel):
         # with the geometry in there, all that's left is to add the attributes
         writer.record(*fieldData)
         writer.save(targetFileName)
-        
