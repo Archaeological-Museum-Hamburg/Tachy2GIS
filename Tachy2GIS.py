@@ -79,6 +79,8 @@ class Tachy2Gis:
         self.iface.mapCanvas().setMapTool(self.previousTool)
 
     def setActiveLayer(self):
+        if Qt is None:
+            return
         activeLayer = self.dlg.sourceLayerComboBox.currentLayer()
         if activeLayer is None:
             return
@@ -275,7 +277,6 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
-     
         # Store the active map tool and switch to the T2G_VertexPickerTool
         self.previousTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.mapTool)

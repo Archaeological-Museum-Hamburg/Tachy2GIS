@@ -7,6 +7,7 @@ from qgis.core import *
 from qgis.gui import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+import GSI16
 import os.path
 import re
 from AnchorUpdateDialog import AnchorUpdateDialog
@@ -137,7 +138,7 @@ class T2G_Vertex():
     #  @param x,y,z Vertex coordinates
     #  @param wkt allows to pass a wkt string containing coordinates to the ctor.
     #             If at the same time x, y and z are passed, their values will be overwritten
-    def __init__(self, label = None, source = None, x = None, y = None, z = None, wkt = ""):
+    def __init__(self, label=None, source=None, x=None, y=None, z=None, wkt=""):
         self.label = str(label)
         self.source = source
         self.x = x
@@ -196,6 +197,11 @@ class T2G_Vertex():
             return (self.x, self.y)
         else:
             return (self.x, self.y, self.z)
+    @staticmethod
+    def fromGSI16(line):
+        vtxData = GSI16.parse()
+
+        return T2G_Vertex()
 
 
 ## The T2G_VertexList handles the painting and selection of vertices
@@ -453,3 +459,8 @@ class T2G_VertexList(QAbstractTableModel):
         # with the geometry in there, all that's left is to add the attributes
         writer.record(*fieldData)
         writer.save(targetFileName)
+
+
+if __name__ == '__main__':
+    testLine = '*11....+0000000000000306 21.022+0000000002264250 22.022+0000000009831450 31..00+0000000000002316 81..00+0000000565386572 82..00+0000005924616673 83..00+0000000000005367 87..10+0000000000000000 \r\n'
+    vtx = T2G_Vertex.fromGSI16(testLine)
