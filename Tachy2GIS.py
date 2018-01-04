@@ -30,6 +30,7 @@ from T2G_VertexList import T2G_VertexList
 from Tachy2GIS_dialog import Tachy2GisDialog
 from FieldDialog import FieldDialog
 from pointProvider import PointProvider
+from TachyConnectionDialog import TachyConnectionDialog
 import resources
 
 # Initialize Qt resources from file resources.py
@@ -98,7 +99,7 @@ class Tachy2Gis:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
         It is called in ad_action"""
-        self.dlg.pushButton.clicked.connect(self.drawPoint)
+        self.dlg.pushButton.clicked.connect(self.tachyConnectionDialog.show)
         self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
@@ -158,6 +159,7 @@ class Tachy2Gis:
         self.mapTool = T2G_VertexePickerTool(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
+        self.tachyConnectionDialog = TachyConnectionDialog()
         crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
         #self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
         #self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])
