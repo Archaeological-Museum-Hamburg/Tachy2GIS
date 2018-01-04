@@ -7,7 +7,7 @@ from qgis.core import *
 from qgis.gui import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-import GSI16
+import GSI_Parser
 import os.path
 import re
 from AnchorUpdateDialog import AnchorUpdateDialog
@@ -198,10 +198,18 @@ class T2G_Vertex():
         else:
             return (self.x, self.y, self.z)
     @staticmethod
-    def fromGSI16(line):
-        vtxData = GSI16.parse()
-
-        return T2G_Vertex()
+    def fromGSI(line):
+        # parser returns two dicts, values and units (actually strings to label the units)
+        # this is a clear case of 'Code auf Vorrat', I apologise for this.
+        vtxData = GSI_Parser.parse(line)[0]
+        if 'targetZ' not in vtxData.keys():
+            raise ValueError('No z coordinate in: ' + line)
+        label = vtxData['pointId']
+        x = vtxData['targetX']
+        y = vtxData['targetY']
+        z = vtxData['targetZ']
+        source = T2G_Vertex.SOURCE_EXTERNAL
+        return T2G_Vertex(label, source, x, y, z)
 
 
 ## The T2G_VertexList handles the painting and selection of vertices
@@ -440,7 +448,7 @@ class T2G_VertexList(QAbstractTableModel):
             return
         if not targetLayer.dataProvider().name() == u'ogr':
             return
-        # the absolute pathto the shapefile is extracted fromits URI and a 
+        # the absolute path to the shapefile is extracted fromits URI and a
         # shapefile.reader is created
         dataUri = targetLayer.dataProvider().dataSourceUri()
         targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
@@ -462,5 +470,6 @@ class T2G_VertexList(QAbstractTableModel):
 
 
 if __name__ == '__main__':
-    testLine = '*11....+0000000000000306 21.022+0000000002264250 22.022+0000000009831450 31..00+0000000000002316 81..00+0000000565386572 82..00+0000005924616673 83..00+0000000000005367 87..10+0000000000000000 \r\n'
-    vtx = T2G_Vertex.fromGSI16(testLine)
+    testLine16 = '*11....+0000000000000306 21.022+0000000002264250 22.022+0000000009831450 31..00+0000000000002316 81..00+0000000565386572 82..00+0000005924616673 83..00+0000000000005367 87..10+0000000000000000 \r\n'
+    vtx = T2G_Vertex.fromGSI(testLine16)
+    print vtx.fields()

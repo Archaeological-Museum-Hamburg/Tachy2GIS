@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 dict_projections = {
     "WGS84": 4326,
     "Gauss-Krüger1": 5520,
@@ -14,7 +16,7 @@ dict_projections = {
     "Kein Projektionssystem": "NONE",
     }
 
-dict_long = {
+dict_labels = {
 # Textinormationen
     "@T": "manual_notes",
     "01": "manual_notes",
@@ -241,8 +243,10 @@ dict_units_attributes_digits = {
     "6": "meter_1_10mm",
     "7": "feet_1_10t",
     "8": "meter_1_100mm",
+    ".": None
     }
 
+# number of decimal places for each type of unit
 dict_units_digits = {
     "0": 3,
      "1": 3,
@@ -257,6 +261,21 @@ dict_units_digits = {
      ".": 0,
     }
 
+# dividers required to put the point where it belongs
+dict_units_dividers = {
+    "0": 100,
+     "1": 100,
+     "2": 10000,
+     "3": 10000,
+     "4": 10000,
+     "5": 1000,
+     "6": 1000,
+     "7": 1000,
+     "8": 10000,
+     "9": 1,
+     ".": 1,
+    }
+
 dict_typeConversions = {
     "TEXT": str,
     "DOUBLE": float,
@@ -265,4 +284,51 @@ dict_typeConversions = {
     }
 
 def parse(line):
-    return {}
+    extracted = {}
+    units = {}
+    # Leica supports two different formats: GSI-8 and GSI-16.
+    # The numbers represent the available precision for storing values.
+    # GSI-16 is identified by prefixing the dataset with an asterisk character
+    if line[0] == "*":
+        precision = 16
+        line = line[1:]
+    else:
+        precision = 8
+    extracted['precision'] = precision
+    for part in line.split():
+        identifier = part[:2]
+        idExtension = part[2]
+        compensatorInfo = part[3]
+        sourceInfo = part[4]
+        unitInfo = part[5]
+        signInfo = part[6]
+        value = part[7:]
+
+        # The first two places define the content of a part, which in turn defines the data type of the value
+        label = dict_labels[identifier]
+        baseType = dict_formats[identifier]
+        units[label] = dict_units_attributes_digits[unitInfo]
+
+        # strings are simple, the require no further treatment before passing on, so they are exempt from processing:
+        if not baseType == "TEXT":
+            # everything else has to be cast to another type:
+            value = dict_typeConversions[baseType](value)
+            # Datetimes are now considered done, numbers still have to be adjusted for sign and precision:
+            if not baseType == "DATE":
+                # positive values are identified by a '+' sign at the 7th place of a word
+                if not signInfo == "+":
+                    value *= -1
+                value /= dict_units_dividers[unitInfo]
+        # converted values are labeled and written to a dict
+        extracted[label] = value
+    return extracted, units
+
+
+if __name__ == "__main__":
+    testLine = "*11....+0000000000000306 21.022+0000000002264250 22.022+0000000009831450 31..00+0000000000002316 81..00+0000000565386572 82..00+0000005924616673 83..00+0000000000005367 87..10+0000000000000000 \r\n"
+    parsed, units = parse(testLine)
+    print parsed.keys()
+    print parsed['precision']
+    print parsed['targetX'], parsed['targetY'], parsed['targetZ']
+    print units['targetX'], units['targetY'], units['targetZ']
+    print parsed['pointId']

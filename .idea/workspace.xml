@@ -2,14 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="516f1670-e7cc-4ec0-b912-c7f5f71e95bd" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/ExternalPointProvider/__init__.py" />
-      <change beforePath="" afterPath="$PROJECT_DIR$/GSI16.py" />
-      <change beforePath="" afterPath="$PROJECT_DIR$/LeicaTachy.py" />
-      <change beforePath="$PROJECT_DIR$/.idea/Tachy2Gis.iml" afterPath="$PROJECT_DIR$/.idea/Tachy2Gis.iml" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" afterPath="$PROJECT_DIR$/.idea/modules.xml" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change beforePath="$PROJECT_DIR$/GSI16.py" afterPath="$PROJECT_DIR$/GSI_Parser.py" />
+      <change beforePath="$PROJECT_DIR$/LeicaTachy.py" afterPath="$PROJECT_DIR$/LeicaTachy.py" />
       <change beforePath="$PROJECT_DIR$/T2G_VertexList.py" afterPath="$PROJECT_DIR$/T2G_VertexList.py" />
-      <change beforePath="$PROJECT_DIR$/Tachy2GIS.py" afterPath="$PROJECT_DIR$/Tachy2GIS.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -23,8 +19,8 @@
       <file leaf-file-name="Tachy2GIS.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Tachy2GIS.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="190">
-              <caret line="82" column="18" lean-forward="false" selection-start-line="82" selection-start-column="18" selection-end-line="82" selection-end-column="18" />
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="23" />
               <folding />
             </state>
           </provider>
@@ -33,8 +29,8 @@
       <file leaf-file-name="TachyToGIS.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/../../TTG_prototype/TachyToGIS.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-942">
-              <caret line="401" column="47" lean-forward="true" selection-start-line="401" selection-start-column="47" selection-end-line="401" selection-end-column="47" />
+            <state relative-caret-position="7128">
+              <caret line="401" column="47" lean-forward="false" selection-start-line="401" selection-start-column="47" selection-end-line="401" selection-end-column="47" />
               <folding />
             </state>
           </provider>
@@ -43,7 +39,7 @@
       <file leaf-file-name="LeicaTachy.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/LeicaTachy.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="216">
+            <state relative-caret-position="198">
               <caret line="12" column="0" lean-forward="false" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
               <folding>
                 <element signature="e#269#282#0" expanded="true" />
@@ -65,8 +61,8 @@
       <file leaf-file-name="T2G_VertexList.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/T2G_VertexList.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-504">
-              <caret line="140" column="76" lean-forward="true" selection-start-line="140" selection-start-column="76" selection-end-line="140" selection-end-column="76" />
+            <state relative-caret-position="500">
+              <caret line="475" column="0" lean-forward="false" selection-start-line="475" selection-start-column="0" selection-end-line="475" selection-end-column="0" />
               <folding>
                 <element signature="e#188#211#0" expanded="true" />
               </folding>
@@ -74,19 +70,12 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="GSI16.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/GSI16.py">
+      <file leaf-file-name="GSI_Parser.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/GSI_Parser.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="252">
-              <caret line="267" column="12" lean-forward="false" selection-start-line="267" selection-start-column="12" selection-end-line="267" selection-end-column="12" />
-              <folding>
-                <element signature="e#19#406#0" expanded="false" />
-                <element signature="e#420#2982#0" expanded="false" />
-                <element signature="e#2999#4926#0" expanded="false" />
-                <element signature="e#4960#5170#0" expanded="false" />
-                <element signature="e#5192#5341#0" expanded="false" />
-                <element signature="e#5366#5449#0" expanded="false" />
-              </folding>
+            <state relative-caret-position="356">
+              <caret line="327" column="17" lean-forward="false" selection-start-line="327" selection-start-column="17" selection-end-line="327" selection-end-column="17" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -105,7 +94,11 @@
       <find>previousTool</find>
       <find>is None</find>
       <find>inw</find>
+      <find>line</find>
     </findStrings>
+    <replaceStrings>
+      <replace>part</replace>
+    </replaceStrings>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -118,6 +111,7 @@
         <option value="$PROJECT_DIR$/LeicaTachy.py" />
         <option value="$PROJECT_DIR$/GSI16.py" />
         <option value="$PROJECT_DIR$/T2G_VertexList.py" />
+        <option value="$PROJECT_DIR$/GSI_Parser.py" />
       </list>
     </option>
   </component>
@@ -145,8 +139,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -167,6 +159,8 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scratches" />
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -194,7 +188,25 @@
       </list>
     </option>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.GSI16">
+    <configuration name="GSI16" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="Tachy2Gis" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/GSI_Parser.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
     <configuration name="LeicaTachy" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -213,9 +225,34 @@
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
     </configuration>
+    <configuration name="T2G_VertexList" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="Tachy2Gis" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/T2G_VertexList.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
+    <list size="3">
+      <item index="0" class="java.lang.String" itemvalue="Python.LeicaTachy" />
+      <item index="1" class="java.lang.String" itemvalue="Python.GSI16" />
+      <item index="2" class="java.lang.String" itemvalue="Python.T2G_VertexList" />
+    </list>
     <recent_temporary>
-      <list size="1">
-        <item index="0" class="java.lang.String" itemvalue="Python.LeicaTachy" />
+      <list size="3">
+        <item index="0" class="java.lang.String" itemvalue="Python.GSI16" />
+        <item index="1" class="java.lang.String" itemvalue="Python.T2G_VertexList" />
+        <item index="2" class="java.lang.String" itemvalue="Python.LeicaTachy" />
       </list>
     </recent_temporary>
   </component>
@@ -240,7 +277,14 @@
       <option name="project" value="LOCAL" />
       <updated>1514986632625</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Started on Tachy connectivity.">
+      <created>1515004707719</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1515004707719</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -250,20 +294,20 @@
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.1609375" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.1595092" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Code Outline" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.20961145" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32924336" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32924336" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3997955" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.1595092" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
     </layout>
@@ -299,13 +343,68 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Moved to pyCharm. Removed 'sourceChanged' function." />
-    <option name="LAST_COMMIT_MESSAGE" value="Moved to pyCharm. Removed 'sourceChanged' function." />
+    <MESSAGE value="Started on Tachy connectivity." />
+    <option name="LAST_COMMIT_MESSAGE" value="Started on Tachy connectivity." />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <option name="time" value="3" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/Tachy2GIS.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1296">
+          <caret line="82" column="18" lean-forward="false" selection-start-line="82" selection-start-column="18" selection-end-line="82" selection-end-column="18" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../TTG_prototype/TachyToGIS.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="7218">
+          <caret line="401" column="47" lean-forward="true" selection-start-line="401" selection-start-column="47" selection-end-line="401" selection-end-column="47" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/LeicaTachy.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="216">
+          <caret line="12" column="0" lean-forward="false" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
+          <folding>
+            <element signature="e#269#282#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/pointProvider.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/T2G_VertexList.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2394">
+          <caret line="140" column="76" lean-forward="true" selection-start-line="140" selection-start-column="76" selection-end-line="140" selection-end-column="76" />
+          <folding>
+            <element signature="e#188#211#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/GSI_Parser.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="252">
+          <caret line="267" column="12" lean-forward="false" selection-start-line="267" selection-start-column="12" selection-end-line="267" selection-end-column="12" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/Tachy2GIS.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="288">
@@ -344,7 +443,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="209">
           <caret line="101" column="12" lean-forward="false" selection-start-line="101" selection-start-column="12" selection-end-line="101" selection-end-column="12" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -352,7 +450,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -360,16 +457,13 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-162">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#10#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/../../TTG_prototype/TachyToGIS.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-942">
-          <caret line="401" column="47" lean-forward="true" selection-start-line="401" selection-start-column="47" selection-end-line="401" selection-end-column="47" />
+        <state relative-caret-position="7128">
+          <caret line="401" column="47" lean-forward="false" selection-start-line="401" selection-start-column="47" selection-end-line="401" selection-end-column="47" />
           <folding />
         </state>
       </provider>
@@ -384,7 +478,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/LeicaTachy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="216">
+        <state relative-caret-position="198">
           <caret line="12" column="0" lean-forward="false" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
           <folding>
             <element signature="e#269#282#0" expanded="true" />
@@ -394,34 +488,27 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/Tachy2GIS.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="190">
-          <caret line="82" column="18" lean-forward="false" selection-start-line="82" selection-start-column="18" selection-end-line="82" selection-end-column="18" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="23" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/T2G_VertexList.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-504">
-          <caret line="140" column="76" lean-forward="true" selection-start-line="140" selection-start-column="76" selection-end-line="140" selection-end-column="76" />
+        <state relative-caret-position="500">
+          <caret line="475" column="0" lean-forward="false" selection-start-line="475" selection-start-column="0" selection-end-line="475" selection-end-column="0" />
           <folding>
             <element signature="e#188#211#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/GSI16.py">
+    <entry file="file://$PROJECT_DIR$/GSI_Parser.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="252">
-          <caret line="267" column="12" lean-forward="false" selection-start-line="267" selection-start-column="12" selection-end-line="267" selection-end-column="12" />
-          <folding>
-            <element signature="e#19#406#0" expanded="false" />
-            <element signature="e#420#2982#0" expanded="false" />
-            <element signature="e#2999#4926#0" expanded="false" />
-            <element signature="e#4960#5170#0" expanded="false" />
-            <element signature="e#5192#5341#0" expanded="false" />
-            <element signature="e#5366#5449#0" expanded="false" />
-          </folding>
+        <state relative-caret-position="356">
+          <caret line="327" column="17" lean-forward="false" selection-start-line="327" selection-start-column="17" selection-end-line="327" selection-end-column="17" />
+          <folding />
         </state>
       </provider>
     </entry>
