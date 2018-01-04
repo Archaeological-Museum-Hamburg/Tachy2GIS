@@ -18,7 +18,10 @@ class TachyReader(QObject):
         self.pollingTimer = QTimer()
         self.pollingTimer.timeout.connect(self.poll)
         # A measurement takes roughly two seconds. timeout is provided in seconds (polling interval in milliseconds).
-        self.ser = serial.Serial(port, baudRate, timeout=0.2)
+        try:
+            self.ser = serial.Serial(port, baudRate, timeout=0.2)
+        except serial.SerialException:
+            pass
 
     def poll(self):
         if self.ser.inWaiting():
@@ -29,7 +32,7 @@ class TachyReader(QObject):
     def beginListening(self):
         self.pollingTimer.start(self.pollingInterval)
 
-    @pyqtSlot
+    @pyqtSlot()
     def shutDown(self):
         if self.ser.isOpen():
             self.ser.close()

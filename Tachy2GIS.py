@@ -30,7 +30,8 @@ from T2G_VertexList import T2G_VertexList
 from Tachy2GIS_dialog import Tachy2GisDialog
 from FieldDialog import FieldDialog
 from pointProvider import PointProvider
-from TachyConnectionDialog import TachyConnectionDialog
+from TachyReader import TachyReader
+import serial.tools.list_ports as list_ports
 import resources
 
 # Initialize Qt resources from file resources.py
@@ -43,9 +44,9 @@ class Tachy2Gis:
     """QGIS Plugin Implementation."""
     # Custom methods go here:
     
-    def drawPoint(self):
-        x, y, z = self.pointProvider.getPoint()
-        self.mapTool.addVertex(None, T2G_Vertex.SOURCE_EXTERNAL, x, y, z)
+    def vertexReceived(self, line):
+        newVtx = T2G_Vertex.fromGSI(line)
+        self.mapTool.addVertex(vtx=newVtx)
 
     ## Clears the map canvas and in turn the vertexList
     def clearCanvas(self):
@@ -95,11 +96,22 @@ class Tachy2Gis:
     def toggleEdit(self):
         iface.actionToggleEditing().trigger()
 
+    def connectSerial(self):
+        port = self.dlg.portComboBox.currentText()
+        self.tachyReader = TachyReader(port, 9600)
+        self.tachyReader.moveToThread(self.pollingThread)
+        self.pollingThread.start()
+        self.tachyReader.lineReceived.connect(self.vertexReceived)
+        self.tachyReader.beginListening()
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
         It is called in ad_action"""
-        self.dlg.pushButton.clicked.connect(self.tachyConnectionDialog.show)
+        portNames = [port.device for port in list_ports.comports()]
+        self.dlg.portComboBox.addItems(portNames)
+        self.dlg.portComboBox.currentIndexChanged.connect(self.connectSerial)
+
         self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
@@ -159,7 +171,8 @@ class Tachy2Gis:
         self.mapTool = T2G_VertexePickerTool(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
-        self.tachyConnectionDialog = TachyConnectionDialog()
+        self.tachyReader = TachyReader('', 9600)
+        self.pollingThread = QThread()
         crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
         #self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
         #self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])

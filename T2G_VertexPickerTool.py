@@ -52,8 +52,11 @@ class T2G_VertexePickerTool(QgsMapTool):
     
     
     ## Adds a new vertex to the attached table model, the rubber band and the vertex markers
-    def addVertex(self, label = None, source = None, x = None, y = None, z = None):
-        vertex = T2G_Vertex(label, source, x, y, z)
+    def addVertex(self, label = None, source = None, x = None, y = None, z = None, vtx=None):
+        if vtx:
+            vertex = vtx
+        else:
+            vertex = T2G_Vertex(label, source, x, y, z)
         adjusted = self.vertexList.append(vertex)
         self.rubberBand.addPoint(adjusted.getQgsPoint(), True)
         index = len(self.markers)
