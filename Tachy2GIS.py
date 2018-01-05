@@ -29,7 +29,6 @@ from T2G_VertexPickerTool import *
 from T2G_VertexList import T2G_VertexList
 from Tachy2GIS_dialog import Tachy2GisDialog
 from FieldDialog import FieldDialog
-from pointProvider import PointProvider
 from TachyReader import TachyReader
 import serial.tools.list_ports as list_ports
 import resources
@@ -161,7 +160,6 @@ class Tachy2Gis:
         self.toolbar.setObjectName(u'Tachy2Gis')
         
         ## From here: Own additions
-        self.pointProvider = PointProvider()
         self.vertexList = T2G_VertexList()
         
         self.mapTool = T2G_VertexePickerTool(self)
