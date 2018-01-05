@@ -98,11 +98,7 @@ class Tachy2Gis:
 
     def connectSerial(self):
         port = self.dlg.portComboBox.currentText()
-        self.tachyReader = TachyReader(port, 9600)
-        self.tachyReader.moveToThread(self.pollingThread)
-        self.pollingThread.start()
-        self.tachyReader.lineReceived.connect(self.vertexReceived)
-        self.tachyReader.beginListening()
+        self.tachyReader.setPort(port)
 
     # Interface code goes here:
     def setupControls(self):
@@ -171,12 +167,12 @@ class Tachy2Gis:
         self.mapTool = T2G_VertexePickerTool(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
-        self.tachyReader = TachyReader('', 9600)
+        self.tachyReader = TachyReader(9600)
         self.pollingThread = QThread()
-        crs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
-        #self.vertexLayer = QgsVectorLayer("Point?crs=" + crs, "vertices", "memory")
-        #self.vertexLayer.dataProvider().addAttributes([QgsField("z", QVariant.Double)])
-        #self.vertexLayer.updateFields()
+        self.tachyReader.moveToThread(self.pollingThread)
+        self.pollingThread.start()
+        self.tachyReader.lineReceived.connect(self.vertexReceived)
+        self.tachyReader.beginListening()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -289,6 +285,10 @@ class Tachy2Gis:
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
+        if self.pollingThread.isRunning():
+            self.tachyReader.shutDown()
+            self.pollingThread.terminate()
+            self.pollingThread.wait()
 
     def run(self):
         """Run method that performs all the real work"""
