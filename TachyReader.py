@@ -2,6 +2,8 @@
 # -*- coding=utf-8 -*-
 
 import serial
+
+import datetime
 from PyQt4.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 from qgis.core import QgsMessageLog
 
@@ -16,12 +18,21 @@ class TachyReader(QObject):
         self.ser = serial.Serial()
         self.ser.baudrate = baudRate
         self.ser.timeout = 0.2
+        self.hasLogFile = False
+        self.logFileName = ''
 
     def poll(self):
         if self.ser.isOpen() and self.ser.inWaiting():
             line = self.ser.readline()
             self.lineReceived.emit(line)
-            #QgsMessageLog.logMessage(line, 'Serial', QgsMessageLog.INFO)
+            if self.hasLogFile:
+                timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with open(self.logFileName, 'a') as logFile:
+                    logFile.write(timeStamp + '\t' + line)
+
+    def setLogfile(self, logFileName):
+        self.hasLogFile = True
+        self.logFileName = logFileName
 
     @pyqtSlot()
     def beginListening(self):

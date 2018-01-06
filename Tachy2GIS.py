@@ -99,6 +99,11 @@ class Tachy2Gis:
         port = self.dlg.portComboBox.currentText()
         self.tachyReader.setPort(port)
 
+    def setLog(self):
+        logFileName = QFileDialog.getOpenFileName()
+        self.dlg.logFileEdit.setText(logFileName)
+        self.tachyReader.setLogfile(logFileName)
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
@@ -107,12 +112,15 @@ class Tachy2Gis:
         self.dlg.portComboBox.addItems(portNames)
         self.dlg.portComboBox.currentIndexChanged.connect(self.connectSerial)
 
+        self.dlg.logFileButton.clicked.connect(self.setLog)
+
         self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         
         self.dlg.vertexTableView.setModel(self.vertexList)
+        self.dlg.vertexTableView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
         self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
         self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
         
