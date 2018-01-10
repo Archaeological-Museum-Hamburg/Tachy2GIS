@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../T2G_docs/.idea/T2G_docs.iml" filepath="$PROJECT_DIR$/../T2G_docs/.idea/T2G_docs.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../TTG_prototype/.idea/TTG_prototype.iml" filepath="$PROJECT_DIR$/../../TTG_prototype/.idea/TTG_prototype.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/Tachy2Gis.iml" filepath="$PROJECT_DIR$/.idea/Tachy2Gis.iml" />
     </modules>
