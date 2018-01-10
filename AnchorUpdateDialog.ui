@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>anchorDialog</class>
+ <widget class="QDialog" name="anchorDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>474</width>
+    <height>153</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Updating Anchor Vertices</string>
+  </property>
+  <property name="modal">
+   <bool>false</bool>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="geometriesLabel">
+     <property name="text">
+      <string>Reading geomtries in layer: </string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QProgressBar" name="geometriesBar">
+     <property name="value">
+      <number>0</number>
+     </property>
+     <property name="invertedAppearance">
+      <bool>false</bool>
+     </property>
+     <property name="format">
+      <string>%v / %m</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="anchorLabel">
+     <property name="text">
+      <string>Extracting vertices:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QProgressBar" name="anchorBar">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="abortButton">
+     <property name="text">
+      <string>Abort</string>
+     </property>
+     <property name="autoDefault">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
