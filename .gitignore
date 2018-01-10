@@ -1,2 +1,5 @@
 /.pydevproject
 /.project
+/.idea
+/.settings
+*.py[cod]
