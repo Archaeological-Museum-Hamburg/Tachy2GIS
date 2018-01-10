@@ -104,6 +104,12 @@ class Tachy2Gis:
         self.dlg.logFileEdit.setText(logFileName)
         self.tachyReader.setLogfile(logFileName)
 
+    def dumpEnabled(self):
+        verticesAvailable = (len(self.vertexList) > 0)
+        # Selecting a target layer while there are no vertices in the vertex list may cause segfaults. To avoid this,
+        # the 'Dump' button is disabled as long there are none:
+        self.dlg.dumpButton.setEnabled(verticesAvailable)
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
@@ -134,6 +140,7 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
         
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
+        self.vertexList.layoutChanged.connect(self.dumpEnabled)
 
     
     ## Constructor

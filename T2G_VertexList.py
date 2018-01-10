@@ -138,7 +138,7 @@ class T2G_Vertex():
     #  @param x,y,z Vertex coordinates
     #  @param wkt allows to pass a wkt string containing coordinates to the ctor.
     #             If at the same time x, y and z are passed, their values will be overwritten
-    def __init__(self, label=None, source=None, x=None, y=None, z=None, wkt=""):
+    def __init__(self, label=None, source=None, x=None, y=None, z=0, wkt=""):
         self.label = str(label)
         self.source = source
         self.x = x
@@ -177,7 +177,7 @@ class T2G_Vertex():
         if self.wktDimensions >= 3:
             self.z = float(dimensions[2])
         else:
-            self.z = None
+            self.z = 0
     
     ## Gives you a marker to draw on the map canvas. The shape depends on the
     #  source of the vertex, to help distinguishing between manually created
@@ -197,6 +197,7 @@ class T2G_Vertex():
             return (self.x, self.y)
         else:
             return (self.x, self.y, self.z)
+
     @staticmethod
     def fromGSI(line):
         # parser returns two dicts, values and units (actually strings to label the units)
