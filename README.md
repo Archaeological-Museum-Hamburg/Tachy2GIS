@@ -1,4 +1,6 @@
-#Tachy2GIS: Concepts and Architecture
+**Dependencies:** *Tachy2GI reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`.**
+
+# Tachy2GIS: Concepts and Architecture
 
 Tachy2GIS (henceforth 'T2G') enales you to create geometries directly form tachymeter input while at the same time adding vertices manually. Manually generated vertices snap to features that are already present, in order to avoid overlapping features or holes between directly adjactant geometries. T2G consists of four main elements:
 
@@ -13,7 +15,7 @@ The sourcelayer is the layer that provides the vertices for snapping, e.g. exist
 
 The targetlayer is the one that new geometries will be added to. Its geometry type determines the appearance of the map tool -> if the target layer holds polygons, the map tool will draw polies, a point target will show up as simple vertices when adding geometries.
 
-Source- and targetlayer may (and will likely) be identical. They only play different roles in the process. If source and target are identical, all geometries that exist before the one that is being added are available for snapping.
+*Note:* Source- and targetlayer may (and will likely) be identical. They only play different roles in the process. If source and target are identical, all geometries that exist before the one that is being added are available for snapping.
 
 Both layers have to be vector layers and the target layer has to be a shapefile. They do _not_ have to be of the same geometry type though, meaning it is possible to create a polygon target layer that is anchored to reference points in a point source layer.
 
@@ -21,12 +23,12 @@ Both layers have to be vector layers and the target layer has to be a shapefile.
 
 The main dialog window contains the following elements from top to bottom:
 
-*   A comboBox to select the port on which the tachymeter is connected
-*   A text field to show the path to the tachymeter log file and a button to select a location
-*   A comboBox to select the source layer and next to it a button that opens the export ('Dump') dialog
+*   A comboBox to select the port on which the tachymeter is connected.
+*   A text field to show the path to the tachymeter log file and a button to select a location.
+*   A comboBox to select the source layer and next to it a button that opens the export ('Dump') dialog. The button is disabled until there are actually vertices to export.
 *   A table that shows all vertices of a new geometry while it is created.
-*   Two buttons to delete single or all vertices from the current geometry
-*   'Cancel' and 'Ok' buttons, which currently both close the dialog
+*   Two buttons to delete single or all vertices from the current geometry.
+*   'Cancel' and 'Ok' buttons, which currently both close the dialog.
 
 ## Connecting a tachymeter
 
@@ -45,3 +47,14 @@ Geometries are created by sending measurements from the tachymeter or by adding 
 *   'Cancel' and 'OK' buttons. 'Cancel' closes the dialog while 'OK' attempts to write the new feature, then clears the vertex list in the main dialog and reloads the map view before closing the dialog
 
 Changing the geometry type to one that is different from the source type may mess up the visual representation of the vertices on the map. This is harmless but unsettling and should be avoided.
+
+## Typical workflow
+
+1. Open your project in QGIS
+2. Open the T2G dialog and select the COM port of the tachymeter
+3. Test the tachymeter connection by measuring any point (this is a great opportunity to double check if the tachy and your project are using the same CRS)
+4. Choose a location for your log file, if youwant to generate one
+5. Select your source layer from the combobox
+6. Open the field dialog by clicking 'Dump'
+7. Select your target layer and cancel (The layer stays selected)
+8. Delete your random vertex and begin the real work
