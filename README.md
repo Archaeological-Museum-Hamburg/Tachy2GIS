@@ -1,4 +1,4 @@
-**Dependencies:** *Tachy2GI reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`.**
+**Dependencies:** *Tachy2GIS reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`.**
 
 # Tachy2GIS: Concepts and Architecture
 

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# This parser uses the dictionararies defined by 
+#
 
 dict_projections = {
     "WGS84": 4326,
@@ -289,6 +291,8 @@ def parse(line):
     # Leica supports two different formats: GSI-8 and GSI-16.
     # The numbers represent the available precision for storing values.
     # GSI-16 is identified by prefixing the dataset with an asterisk character
+    if len(line) <= 2:
+		return extracted, units
     if line[0] == "*":
         precision = 16
         line = line[1:]
@@ -308,19 +312,23 @@ def parse(line):
         label = dict_labels[identifier]
         baseType = dict_formats[identifier]
         units[label] = dict_units_attributes_digits[unitInfo]
+        try:
+            # strings are simple, the require no further treatment before passing on, so they are exempt from processing:
+            if not baseType == "TEXT":
+                # everything else has to be cast to another type:
+                value = dict_typeConversions[baseType](value)
+                # Datetimes are now considered done, numbers still have to be adjusted for sign and precision:
+                if not baseType == "DATE":
+                    # positive values are identified by a '+' sign at the 7th place of a word
 
-        # strings are simple, the require no further treatment before passing on, so they are exempt from processing:
-        if not baseType == "TEXT":
-            # everything else has to be cast to another type:
-            value = dict_typeConversions[baseType](value)
-            # Datetimes are now considered done, numbers still have to be adjusted for sign and precision:
-            if not baseType == "DATE":
-                # positive values are identified by a '+' sign at the 7th place of a word
-                if not signInfo == "+":
-                    value *= -1
-                value /= dict_units_dividers[unitInfo]
-        # converted values are labeled and written to a dict
-        extracted[label] = value
+                    if not signInfo == "+":
+                        value *= -1
+                    value /= dict_units_dividers[unitInfo]
+                    
+            # converted values are labeled and written to a dict
+            extracted[label] = value
+        except ValueError:
+            pass
     return extracted, units
 
 
