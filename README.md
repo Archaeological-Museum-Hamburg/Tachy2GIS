@@ -1,5 +1,7 @@
 **Dependencies:** *Tachy2GIS reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`.**
 
+**Restrictions:** *Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.**
+
 # Tachy2GIS: Concepts and Architecture
 
 Tachy2GIS (henceforth 'T2G') enales you to create geometries directly form tachymeter input while at the same time adding vertices manually. Manually generated vertices snap to features that are already present, in order to avoid overlapping features or holes between directly adjactant geometries. T2G consists of four main elements:
