@@ -7,7 +7,6 @@ from qgis.core import *
 from qgis.gui import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from docutils.parsers.rst.roles import role
 from T2G_VertexList import T2G_Vertex, T2G_VertexList
 
 
