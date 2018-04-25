@@ -38,8 +38,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Tachy2Gis'
-copyright = '2013, Christian Trapp'
+project = u'Tachy2Gis'
+copyright = u'2013, Christian Trapp'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -176,8 +176,8 @@ htmlhelp_basename = 'TemplateClassdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Tachy2Gis.tex', 'Tachy2Gis Documentation',
-   'Christian Trapp', 'manual'),
+  ('index', 'Tachy2Gis.tex', u'Tachy2Gis Documentation',
+   u'Christian Trapp', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -209,6 +209,6 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'TemplateClass', 'Tachy2Gis Documentation',
-     ['Christian Trapp'], 1)
+    ('index', 'TemplateClass', u'Tachy2Gis Documentation',
+     [u'Christian Trapp'], 1)
 ]

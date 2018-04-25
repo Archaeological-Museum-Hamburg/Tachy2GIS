@@ -8,7 +8,7 @@
 
 [general]
 name=Tachy2GIS
-qgisMinimumVersion=2.0
+qgisMinimumVersion=3.0
 description=This plugin allows to create geometries directly with a connected tachymeter
 version=0.1
 author=Christian Trapp

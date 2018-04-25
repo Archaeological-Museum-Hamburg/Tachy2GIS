@@ -21,43 +21,26 @@
  ***************************************************************************/
 """
 
-from .FieldDialog_base import Ui_Targetselection
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QTableWidgetItem
-from PyQt5.QtCore import *
+from PyQt4 import QtGui, uic
+from PyQt4.QtCore import *
 import os
-from PyQt5.Qt import QMessageBox
+from PyQt4.Qt import QMessageBox
 from dateutil import parser as dateTimeParser
 import shapefile
 
+FORM_CLASS, _ = uic.loadUiType(os.path.join(
+    os.path.dirname(__file__), 'FieldDialog.ui'))
 
-class FieldDialog(Ui_Targetselection):
+
+class FieldDialog(QtWidgets.QDialog, FORM_CLASS):
     ## This constant is used to map field data types to python data types.
     #  As demonstrated by the dateTimeParser, this can be any function that
     #  takes a single argument.
     TYPE_MAP = {2:int,
                 4:int,
                 6:float,
-                10:str,
+                10:unicode,
                 14:dateTimeParser.parse}
-
-    def __init__(self, layer, parent=None):
-        """Constructor."""
-        Ui_Targetselection.__init__(self, parent=parent)
-        #QDialog.__init__(self)
-        # Set up the user interface from Designer.
-        # After setupUI you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
-        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
-        # #widgets-and-dialogs-with-auto-connect
-        self.setupUi(self)
-        self.layer = layer
-        self.fieldTypes = []
-        self.fieldData = []
-
-        self.targetLayerComboBox.setLayer(self.layer)
-        self.targetLayerComboBox.layerChanged.connect(self.layerChanged)
-        self.buttonBox.accepted.connect(self.validateFields)
 
     ## This function maps pyshp data types to python data types.
     @staticmethod
@@ -74,13 +57,29 @@ class FieldDialog(Ui_Targetselection):
                 return float
         # Strings are called 'C':
         if baseType == 'C':
-            return str
+            return unicode
         if baseType == 'D':
             return dateTimeParser.parse
         # An exception is thrown if an unknown type pops up
         raise ValueError('Unknown data type: ' + baseType)
 
-
+    def __init__(self, layer, parent=None):
+        """Constructor."""
+        super(FieldDialog, self).__init__(parent)
+        # Set up the user interface from Designer.
+        # After setupUI you can access any designer object by doing
+        # self.<objectname>, and you can use autoconnect slots - see
+        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
+        # #widgets-and-dialogs-with-auto-connect
+        self.setupUi(self)
+        self.layer = layer
+        self.fieldTypes = []
+        self.fieldData = []
+        
+        self.targetLayerComboBox.setLayer(self.layer)
+        self.targetLayerComboBox.layerChanged.connect(self.layerChanged)
+        self.buttonBox.accepted.connect(self.validateFields)
+    
     def layerChanged(self):
         if QtGui is None:
             return
@@ -132,7 +131,7 @@ class FieldDialog(Ui_Targetselection):
         fieldItems = [self.fieldTable.item(row, 1) for row in range(self.fieldTable.rowCount())]
         fieldData = [item.data(Qt.EditRole) for item in fieldItems]
         self.fieldData = []
-        fields = list(zip(fieldNames, self.fieldTypes, fieldData))
+        fields = zip(fieldNames, self.fieldTypes, fieldData)
         
         for name, dataType, datum in fields:
             try:

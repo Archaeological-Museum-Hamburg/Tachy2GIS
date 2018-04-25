@@ -20,17 +20,18 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt5.QtWidgets import QAction, QHeaderView
+from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
+from PyQt4.QtGui import QAction, QIcon
 import os.path
 from qgis.utils import iface
 
-from .T2G_VertexPickerTool import *
-from .T2G_VertexList import T2G_VertexList
-from .Tachy2GIS_dialog import Tachy2GisDialog
-from .FieldDialog import FieldDialog
-from .TachyReader import TachyReader
-from PyQt5.QtSerialPort import QSerialPortInfo
+from T2G_VertexPickerTool import *
+from T2G_VertexList import T2G_VertexList
+from Tachy2GIS_dialog import Tachy2GisDialog
+from FieldDialog import FieldDialog
+from TachyReader import TachyReader
+import serial.tools.list_ports as list_ports
+import resources
 
 # Initialize Qt resources from file resources.py
 
@@ -113,7 +114,7 @@ class Tachy2Gis:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
         It is called in ad_action"""
-        portNames = [port.portName() for port in QSerialPortInfo.availablePorts()]
+        portNames = [port.device for port in list_ports.comports()]
         self.dlg.portComboBox.addItems(portNames)
         self.dlg.portComboBox.currentIndexChanged.connect(self.connectSerial)
 
@@ -125,7 +126,7 @@ class Tachy2Gis:
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         
         self.dlg.vertexTableView.setModel(self.vertexList)
-        self.dlg.vertexTableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.dlg.vertexTableView.horizontalHeader().setResizeMode(QHeaderView.Stretch)
         self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
         self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
         
@@ -168,10 +169,10 @@ class Tachy2Gis:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr('&Tachy2GIS')
+        self.menu = self.tr(u'&Tachy2GIS')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar('Tachy2Gis')
-        self.toolbar.setObjectName('Tachy2Gis')
+        self.toolbar = self.iface.addToolBar(u'Tachy2Gis')
+        self.toolbar.setObjectName(u'Tachy2Gis')
         
         ## From here: Own additions
         self.vertexList = T2G_VertexList()
@@ -284,7 +285,7 @@ class Tachy2Gis:
         icon_path = ':/plugins/Tachy2Gis/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr('Tachy2GIS'),
+            text=self.tr(u'Tachy2GIS'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -292,7 +293,7 @@ class Tachy2Gis:
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr('&Tachy2GIS'),
+                self.tr(u'&Tachy2GIS'),
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar

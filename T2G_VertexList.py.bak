@@ -5,13 +5,12 @@
 #******************************************************************************
 from qgis.core import *
 from qgis.gui import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import QApplication as qApp
-from . import GSI_Parser
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+import GSI_Parser
 import os.path
 import re
-from .AnchorUpdateDialog import AnchorUpdateDialog
+from AnchorUpdateDialog import AnchorUpdateDialog
 
 #  some helpful regular expressions for handling wkt:
 ## This regular expressions pulls all numbers from a single vertex
@@ -28,7 +27,7 @@ WKT_EXTENSIONS = [' ', 'Z ', 'ZM ']
 try:
     import shapefile
 except ImportError:
-    print('Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles')
+    print 'Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles'
     raise
 ## Updating anchor points that are used to enable snapping when manually adding 
 #  geometries is delegated to its own thread. This class is required to do that.
@@ -72,7 +71,7 @@ class AnchorUpdater(QObject):
             geometry = feature.geometry()
             # This is ugly, I know, but as mentioned above, it works
             try:
-                wkts.append(geometry.asWkt())
+                wkts.append(geometry.exportToWkt())
             except:
                 pass
             self.signalGeometriesProgress.emit(i)
@@ -99,15 +98,12 @@ class AnchorUpdater(QObject):
                     # preparing a new wkt string representing the vertex as point
                     coordText = WKT_STRIP.sub('', vertext)
                     extension = WKT_EXTENSIONS[len(dimensions) - 2]
-                    anchorWkt = 'Point' + extension + '(' + coordText + ')'
-                    self.anchorPoints.append(anchorWkt)
+                    self.anchorPoints.append('Point' + extension + '(' + coordText + ')')
                     # creating and adding a new entry to the index. The id is 
                     # synchronized with the point list 
                     newAnchor = QgsFeature(pointIndex)
                     pointIndex += 1
-                    anchorPoint = QgsGeometry()
-                    anchorPoint.fromWkt(anchorWkt)
-                    newAnchor.setGeometry(anchorPoint)
+                    newAnchor.setGeometry(QgsGeometry.fromPoint(QgsPoint(coordinates[0], coordinates[1])))
                     self.anchorIndex.insertFeature(newAnchor)
                 self.signalAnchorCount.emit(i)
                 qApp.processEvents()
@@ -175,7 +171,7 @@ class T2G_Vertex():
         # a regex extracts all numbers from the wkt
         dimensions = WKT_VALUES.findall(wkt)
         # x and y are assumed to be present
-        self.x, self.y = list(map(float, dimensions[:2]))
+        self.x, self.y = map(float, dimensions[:2])
         self.wktDimensions = len(dimensions)
         # if there are at least three dimensions, z is extracted as well
         if self.wktDimensions >= 3:
@@ -207,7 +203,7 @@ class T2G_Vertex():
         # parser returns two dicts, values and units (actually strings to label the units)
         # this is a clear case of 'Code auf Vorrat', I apologise for this.
         vtxData = GSI_Parser.parse(line)[0]
-        if 'targetZ' not in list(vtxData.keys()):
+        if 'targetZ' not in vtxData.keys():
             raise ValueError('No z coordinate in: ' + line)
         label = vtxData['pointId']
         x = vtxData['targetX']
@@ -451,7 +447,7 @@ class T2G_VertexList(QAbstractTableModel):
         # nonexistant and non-shapefile layers will be ignored
         if targetLayer is None:
             return
-        if not targetLayer.dataProvider().name() == 'ogr':
+        if not targetLayer.dataProvider().name() == u'ogr':
             return
         # the absolute path to the shapefile is extracted fromits URI and a
         # shapefile.reader is created
@@ -477,4 +473,4 @@ class T2G_VertexList(QAbstractTableModel):
 if __name__ == '__main__':
     testLine16 = '*11....+0000000000000306 21.022+0000000002264250 22.022+0000000009831450 31..00+0000000000002316 81..00+0000000565386572 82..00+0000005924616673 83..00+0000000000005367 87..10+0000000000000000 \r\n'
     vtx = T2G_Vertex.fromGSI(testLine16)
-    print(vtx.fields())
+    print vtx.fields()

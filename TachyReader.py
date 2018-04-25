@@ -1,10 +1,11 @@
 
 # -*- coding=utf-8 -*-
 
-import serial
+
+from PyQt5.QtSerialPort import QSerialPort
 
 import datetime
-from PyQt4.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 from qgis.core import QgsMessageLog
 
 
@@ -15,7 +16,7 @@ class TachyReader(QObject):
         super(self.__class__, self).__init__(parent)
         self.pollingTimer = QTimer()
         self.pollingTimer.timeout.connect(self.poll)
-        self.ser = serial.Serial()
+        self.ser = QSerialPort()
         self.ser.baudrate = baudRate
         self.ser.timeout = 0.2
         self.hasLogFile = False

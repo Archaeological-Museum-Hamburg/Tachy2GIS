@@ -5,10 +5,9 @@
 #******************************************************************************
 from qgis.core import *
 from qgis.gui import *
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from .T2G_VertexList import T2G_Vertex, T2G_VertexList
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+from T2G_VertexList import T2G_Vertex, T2G_VertexList
 
 
 ## T2G_VertexePickerTool
@@ -27,9 +26,8 @@ class T2G_VertexePickerTool(QgsMapTool):
         self.canvas = parent.iface.mapCanvas()
         #self.emitPoint = QgsMapToolEmitPoint(self.canvas)
         self.vertexList = parent.vertexList
-        self.rubberBand = QgsRubberBand(self.canvas)
-        self.geometryType = QgsWkbTypes.Polygon
-        self.geometryType = 3
+        self.rubberBand = QgsRubberBand(self.canvas, QGis.Polygon)
+        self.geometryType = QGis.Polygon
         self.rubberBand.setColor(self.RB_COLOR)
         self.rubberBand.setFillColor(self.RB_FILLCOLOR)
         self.rubberBand.setWidth(1)
@@ -123,7 +121,7 @@ if __name__ == "__main__":
     def printColors(vertexList):
         colors = vertexList.getColors()
         for c in colors:
-            print(c.red(), c.green(), c.blue())
+            print c.red(), c.green(), c.blue()
     
     vl = T2G_VertexList()
     vl.append(T2G_Vertex())
@@ -133,5 +131,5 @@ if __name__ == "__main__":
     vl.clearSelection()
     printColors(vl)
     wktv = T2G_Vertex(wkt = '552364.36630000011064112 5921140.47400000039488077 49.57150000000000034 -179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368')
-    print(vl[0].wktDimensions)
-    print(wktv.wktDimensions)
+    print vl[0].wktDimensions
+    print wktv.wktDimensions

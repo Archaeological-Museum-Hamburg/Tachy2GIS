@@ -292,7 +292,7 @@ def parse(line):
     # The numbers represent the available precision for storing values.
     # GSI-16 is identified by prefixing the dataset with an asterisk character
     if len(line) <= 2:
-        return extracted, units
+		return extracted, units
     if line[0] == "*":
         precision = 16
         line = line[1:]
@@ -335,8 +335,8 @@ def parse(line):
 if __name__ == "__main__":
     testLine = "*11....+0000000000000306 21.022+0000000002264250 22.022+0000000009831450 31..00+0000000000002316 81..00+0000000565386572 82..00+0000005924616673 83..00+0000000000005367 87..10+0000000000000000 \r\n"
     parsed, units = parse(testLine)
-    print(list(parsed.keys()))
-    print(parsed['precision'])
-    print(parsed['targetX'], parsed['targetY'], parsed['targetZ'])
-    print(units['targetX'], units['targetY'], units['targetZ'])
-    print(parsed['pointId'])
+    print parsed.keys()
+    print parsed['precision']
+    print parsed['targetX'], parsed['targetY'], parsed['targetZ']
+    print units['targetX'], units['targetY'], units['targetZ']
+    print parsed['pointId']
