@@ -20,7 +20,7 @@
    <item>
     <widget class="QLabel" name="geometriesLabel">
      <property name="text">
-      <string>Reading geomtries in layer: </string>
+      <string>Reading geometries in layer: </string>
      </property>
     </widget>
    </item>

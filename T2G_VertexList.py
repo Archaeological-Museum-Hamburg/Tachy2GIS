@@ -100,15 +100,17 @@ class AnchorUpdater(QObject):
                     coordText = WKT_STRIP.sub('', vertext)
                     extension = WKT_EXTENSIONS[len(dimensions) - 2]
                     anchorWkt = 'Point' + extension + '(' + coordText + ')'
-                    self.anchorPoints.append(anchorWkt)
+                    self.anchorPoints.append(vertext)
                     # creating and adding a new entry to the index. The id is 
                     # synchronized with the point list 
                     newAnchor = QgsFeature(pointIndex)
                     pointIndex += 1
-                    anchorPoint = QgsGeometry()
-                    anchorPoint.fromWkt(anchorWkt)
-                    newAnchor.setGeometry(anchorPoint)
+                    #anchorPoint.fromWkt(anchorWkt)
+                    newAnchor.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(coordinates[0], coordinates[1])))
                     self.anchorIndex.insertFeature(newAnchor)
+                    # Just checking if this worked:
+                    testWkt = newAnchor.geometry().asWkt()
+                    nn = self.anchorIndex.nearestNeighbor(QgsPointXY(coordinates[0], coordinates[1]), 1)
                 self.signalAnchorCount.emit(i)
                 qApp.processEvents()
                 if self.abort: 
@@ -159,8 +161,8 @@ class T2G_Vertex():
         return [self.label, self.source, self.x, self.y, self.z]
     
     ## Returns a 2D QgsPoint.
-    def getQgsPoint(self):
-        return QgsPoint(self.x, self.y)
+    def getQgsPointXY(self):
+        return QgsPointXY(self.x, self.y)
     
     ## Allows to set coordinates. Will die horribly if it is passed less
     #  than three coordinates
@@ -189,7 +191,7 @@ class T2G_Vertex():
     #  @return a QgsVertexMarker
     def getMarker(self, canvas):
         marker = QgsVertexMarker(canvas)
-        marker.setCenter(self.getQgsPoint())
+        marker.setCenter(self.getQgsPointXY())
         marker.setIconType(self.SHAPE_MAP[self.source])
         return marker
     
@@ -348,7 +350,7 @@ class T2G_VertexList(QAbstractTableModel):
     #  @return the probably modified vertex
     def append(self, vertex):
         if vertex.source == T2G_Vertex.SOURCE_INTERNAL:
-            anchorId = self.anchorIndex.nearestNeighbor(vertex.getQgsPoint(), 1)
+            anchorId = self.anchorIndex.nearestNeighbor(vertex.getQgsPointXY(), 1)
             # nearestNeighbour returns a list. It is not unpacked yet, because 
             # doing so causes errors if it is empty, also index '0' is interpreted
             # as 'False' and gets ignored

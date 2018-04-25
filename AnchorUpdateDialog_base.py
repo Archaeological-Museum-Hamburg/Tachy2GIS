@@ -41,7 +41,7 @@ class Ui_anchorDialog(object):
     def retranslateUi(self, anchorDialog):
         _translate = QtCore.QCoreApplication.translate
         anchorDialog.setWindowTitle(_translate("anchorDialog", "Updating Anchor Vertices"))
-        self.geometriesLabel.setText(_translate("anchorDialog", "Reading geomtries in layer: "))
+        self.geometriesLabel.setText(_translate("anchorDialog", "Reading geometries in layer: "))
         self.geometriesBar.setFormat(_translate("anchorDialog", "%v / %m"))
         self.anchorLabel.setText(_translate("anchorDialog", "Extracting vertices:"))
         self.abortButton.setText(_translate("anchorDialog", "Abort"))

@@ -59,7 +59,7 @@ class T2G_VertexePickerTool(QgsMapTool):
         else:
             vertex = T2G_Vertex(label, source, x, y, z)
         adjusted = self.vertexList.append(vertex)
-        self.rubberBand.addPoint(adjusted.getQgsPoint(), True)
+        self.rubberBand.addPoint(adjusted.getQgsPointXY(), True)
         index = len(self.markers)
         self.markers.append(adjusted.getMarker(self.canvas))
         self.parent.dlg.vertexTableView.selectRow(index)

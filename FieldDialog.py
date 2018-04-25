@@ -22,8 +22,7 @@
 """
 
 from .FieldDialog_base import Ui_Targetselection
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QTableWidgetItem
+from PyQt5 import QtGui, QtWidgets
 from PyQt5.QtCore import *
 import os
 from PyQt5.Qt import QMessageBox
@@ -105,7 +104,7 @@ class FieldDialog(Ui_Targetselection):
         self.fieldTable.setRowCount(len(fields))
         # The first column is populated with the names of the fields and set to 'not editable' 
         for row, field in enumerate(fields):
-            item = QtGui.QTableWidgetItem(field[0])
+            item = QtWidgets.QTableWidgetItem(field[0])
             item.setFlags(item.flags() ^ Qt.ItemIsEditable)
             self.fieldTable.setItem(row, 0, item)
             self.fieldTable.setItem(row, 1, None)
@@ -120,7 +119,7 @@ class FieldDialog(Ui_Targetselection):
             lastFeature = features[-1]
             for row, attribute in enumerate(lastFeature.attributes()):
                 self.fieldTypes.append(type(attribute))
-                self.fieldTable.setItem(row, 1, QtGui.QTableWidgetItem(str(attribute)))
+                self.fieldTable.setItem(row, 1, QtWidgets.QTableWidgetItem(str(attribute)))
 
         self.setFixedSize(self.verticalLayout.sizeHint())
     
