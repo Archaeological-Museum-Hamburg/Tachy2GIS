@@ -100,7 +100,7 @@ class AnchorUpdater(QObject):
                     coordText = WKT_STRIP.sub('', vertext)
                     extension = WKT_EXTENSIONS[len(dimensions) - 2]
                     anchorWkt = 'Point' + extension + '(' + coordText + ')'
-                    self.anchorPoints.append(vertext)
+                    self.anchorPoints.append(anchorWkt)
                     # creating and adding a new entry to the index. The id is 
                     # synchronized with the point list 
                     newAnchor = QgsFeature(pointIndex)
@@ -111,7 +111,7 @@ class AnchorUpdater(QObject):
                     # Just checking if this worked:
                     testWkt = newAnchor.geometry().asWkt()
                     nn = self.anchorIndex.nearestNeighbor(QgsPointXY(coordinates[0], coordinates[1]), 1)
-                self.signalAnchorCount.emit(i)
+                self.signalAnchorCount.emit(i + 1)
                 qApp.processEvents()
                 if self.abort: 
                     self.anchorPoints = []

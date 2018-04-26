@@ -21,7 +21,8 @@
  ***************************************************************************/
 """
 from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt5.QtWidgets import QAction, QHeaderView
+from . import resources
+from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
 import os.path
 from qgis.utils import iface
 
@@ -99,7 +100,7 @@ class Tachy2Gis:
         self.tachyReader.setPort(port)
 
     def setLog(self):
-        logFileName = QFileDialog.getOpenFileName()
+        logFileName = QFileDialog.getOpenFileName()[0]
         self.dlg.logFileEdit.setText(logFileName)
         self.tachyReader.setLogfile(logFileName)
 
@@ -169,7 +170,6 @@ class Tachy2Gis:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr('&Tachy2GIS')
-        # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar('Tachy2Gis')
         self.toolbar.setObjectName('Tachy2Gis')
         
