@@ -20,18 +20,18 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from . import resources
-from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
 import os.path
+
+from PyQt5.QtSerialPort import QSerialPortInfo
+from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
 from qgis.utils import iface
 
-from .T2G_VertexPickerTool import *
-from .T2G_VertexList import T2G_VertexList
-from .Tachy2GIS_dialog import Tachy2GisDialog
+from T2G.VertexList import T2G_VertexList, T2G_Vertex
+from T2G.TachyReader import TachyReader
 from .FieldDialog import FieldDialog
-from .TachyReader import TachyReader
-from PyQt5.QtSerialPort import QSerialPortInfo
+from T2G.VertexPickerTool import T2G_VertexePickerTool
+from .Tachy2GIS_dialog import Tachy2GisDialog
+
 
 # Initialize Qt resources from file resources.py
 

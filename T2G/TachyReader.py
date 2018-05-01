@@ -6,7 +6,6 @@ from PyQt5.QtSerialPort import QSerialPort
 
 import datetime
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
-from qgis.core import QgsMessageLog
 
 
 class TachyReader(QObject):
@@ -17,19 +16,26 @@ class TachyReader(QObject):
         self.pollingTimer = QTimer()
         self.pollingTimer.timeout.connect(self.poll)
         self.ser = QSerialPort()
-        self.ser.baudrate = baudRate
-        self.ser.timeout = 0.2
+        self.ser.setBaudRate(baudRate)
+        self.ser.readyRead.connect(self.incoming)
         self.hasLogFile = False
         self.logFileName = ''
 
+    @pyqtSlot()
+    def incoming(self):
+        print('INCOMING')
+        pass
+
     def poll(self):
-        if self.ser.isOpen() and self.ser.inWaiting():
-            line = self.ser.readline()
+        if self.ser.canReadLine():
+            line = self.ser.readLine()
             self.lineReceived.emit(line)
             if self.hasLogFile:
                 timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 with open(self.logFileName, 'a') as logFile:
                     logFile.write(timeStamp + '\t' + line)
+        else:
+            pass
 
     def setLogfile(self, logFileName):
         self.hasLogFile = True
@@ -42,8 +48,8 @@ class TachyReader(QObject):
     @pyqtSlot(str)
     def setPort(self, portName):
         self.ser.close()
-        self.ser.port = portName
-        self.ser.open()
+        self.ser.setPortName(portName)
+        self.ser.open(QSerialPort.ReadOnly)
 
     @pyqtSlot()
     def shutDown(self):

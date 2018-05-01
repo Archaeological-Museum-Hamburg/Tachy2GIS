@@ -8,7 +8,7 @@ from qgis.gui import *
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from .T2G_VertexList import T2G_Vertex, T2G_VertexList
+from .VertexList import T2G_Vertex, T2G_VertexList
 
 
 ## T2G_VertexePickerTool

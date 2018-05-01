@@ -3,15 +3,15 @@
 #
 #
 #******************************************************************************
-from qgis.core import *
-from qgis.gui import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import QApplication as qApp
-from . import GSI_Parser
 import os.path
 import re
-from .AnchorUpdateDialog import AnchorUpdateDialog
+
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import QApplication as qApp
+from qgis.core import *
+
+from T2G import GSI_Parser
+from AnchorUpdateDialog import AnchorUpdateDialog
 
 #  some helpful regular expressions for handling wkt:
 ## This regular expressions pulls all numbers from a single vertex
