@@ -17,18 +17,12 @@ class TachyReader(QObject):
         self.pollingTimer.timeout.connect(self.poll)
         self.ser = QSerialPort()
         self.ser.setBaudRate(baudRate)
-        self.ser.readyRead.connect(self.incoming)
         self.hasLogFile = False
         self.logFileName = ''
 
-    @pyqtSlot()
-    def incoming(self):
-        print('INCOMING')
-        pass
-
     def poll(self):
         if self.ser.canReadLine():
-            line = self.ser.readLine()
+            line = str(self.ser.readLine())
             self.lineReceived.emit(line)
             if self.hasLogFile:
                 timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
