@@ -9,9 +9,10 @@ import re
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication as qApp
 from qgis.core import *
+from qgis.gui import *
 
-from T2G import GSI_Parser
-from AnchorUpdateDialog import AnchorUpdateDialog
+from . import GSI_Parser
+from .. import AnchorUpdateDialog
 
 #  some helpful regular expressions for handling wkt:
 ## This regular expressions pulls all numbers from a single vertex
@@ -296,7 +297,7 @@ class T2G_VertexList(QAbstractTableModel):
             # empty or nonexisting layers leave us with an empty point list and index.
             return
         # Initializing the progress dialog
-        aud = AnchorUpdateDialog()
+        aud = AnchorUpdateDialog.AnchorUpdateDialog()
         aud.abortButton.clicked.connect(self.abortUpdate)
         aud.geometriesBar.setMaximum(layer.featureCount())
         aud.geometriesBar.setValue(0)

@@ -21,15 +21,20 @@
  ***************************************************************************/
 """
 import os.path
+from . import resources
 
-from PyQt5.QtSerialPort import QSerialPortInfo
+from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
+from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
+from PyQt5.QtGui import QIcon
 from qgis.utils import iface
+from qgis.core import QgsMapLayerProxyModel
+from qgis.gui import QgsMapToolPan
 
-from T2G.VertexList import T2G_VertexList, T2G_Vertex
-from T2G.TachyReader import TachyReader
+from .T2G.VertexList import T2G_VertexList, T2G_Vertex
+from .T2G.TachyReader import TachyReader
 from .FieldDialog import FieldDialog
-from T2G.VertexPickerTool import T2G_VertexePickerTool
+from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 
 
@@ -179,7 +184,7 @@ class Tachy2Gis:
         self.mapTool = T2G_VertexePickerTool(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
-        self.tachyReader = TachyReader(9600)
+        self.tachyReader = TachyReader(QSerialPort.Baud9600)
         self.pollingThread = QThread()
         self.tachyReader.moveToThread(self.pollingThread)
         self.pollingThread.start()
