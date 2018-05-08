@@ -6,6 +6,7 @@ from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 from PyQt5.QtWidgets import QApplication
 
 from T2G.TachyReader import TachyReader
+from T2G.GSI_Parser import parse
 
 
 class TachyTestFixture(QApplication):
@@ -22,9 +23,10 @@ class TachyTestFixture(QApplication):
 
     def vertexReceived(self, line):
         print(line)
+        parsed, units = parse(line)
+        print(parsed['targetX'], parsed['targetY'], parsed['targetZ'])
         self.lineCount += 1
-        if self.lineCount > 3:
-            self.tachyReader.shutDown()
+
 
     def shutDown(self):
         self.tachyReader.shutDown()
