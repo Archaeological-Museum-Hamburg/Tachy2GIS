@@ -291,7 +291,7 @@ def parse(line):
     # Leica supports two different formats: GSI-8 and GSI-16.
     # The numbers represent the available precision for storing values.
     # GSI-16 is identified by prefixing the dataset with an asterisk character
-    if len(line) <= 2:
+    if len(line) <= 4:
         return extracted, units
     if line[0] == "*":
         precision = 16

@@ -72,7 +72,8 @@ class Tachy2Gis:
                 # otherwise the list is cleared
                 self.mapTool.clear()
             targetLayer.dataProvider().forceReload()
-            targetLayer.triggerRepaint()
+            targetLayer.dataProvider().dataChanged.emit()
+            #targetLayer.triggerRepaint()
             self.vertexList.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
         else:
             return
