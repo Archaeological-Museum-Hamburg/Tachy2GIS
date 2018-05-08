@@ -153,6 +153,12 @@ class T2G_Vertex():
         self.z = z
         self.wkt = wkt
         self.wktDimensions = 0
+        if self.x is not None:
+            self.wktDimensions += 1
+        if self.y is not None:
+            self.wktDimensions += 1
+        if self.z is not None:
+            self.wktDimensions += 1
         if not wkt == "":
             self.setWkt(wkt)
 

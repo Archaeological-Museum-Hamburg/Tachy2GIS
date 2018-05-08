@@ -105,7 +105,7 @@ class Tachy2Gis:
         self.tachyReader.setPort(port)
 
     def setLog(self):
-        logFileName = QFileDialog.getOpenFileName()[0]
+        logFileName = QFileDialog.getSaveFileName()[0]
         self.dlg.logFileEdit.setText(logFileName)
         self.tachyReader.setLogfile(logFileName)
 

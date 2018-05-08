@@ -22,8 +22,8 @@ class TachyReader(QObject):
 
     def poll(self):
         if self.ser.canReadLine():
-            line = bytes(self.ser.readLine())
-            self.lineReceived.emit(line.decode("ascii"))
+            line = bytes(self.ser.readLine()).decode("ascii")
+            self.lineReceived.emit(line)
             if self.hasLogFile:
                 timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 with open(self.logFileName, 'a') as logFile:

@@ -13,7 +13,7 @@ class TachyTestFixture(QApplication):
     def __init__(self, args):
         QApplication.__init__(self, args)
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
-        self.tachyReader.setPort('ttyUSB0')
+        self.tachyReader.setPort('COM10')
         self.pollingThread = QThread()
         self.tachyReader.moveToThread(self.pollingThread)
         self.pollingThread.start()
