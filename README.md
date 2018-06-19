@@ -2,6 +2,8 @@
 
 **Restrictions:** *Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.**
 
+**Known Issues:** *There's a problem with "Map Refresh" in QGIS 3.0.3. Resulting from this the "Object Count" of a new and empty layer stays at "0" and you can't zoom in to the measured objects. As a workaround make a copy of the layer and zoom in then.**
+
 # Tachy2GIS: Concepts and Architecture
 
 Tachy2GIS (henceforth 'T2G') enales you to create geometries directly form tachymeter input while at the same time adding vertices manually. Manually generated vertices snap to features that are already present, in order to avoid overlapping features or holes between directly adjactant geometries. T2G consists of four main elements:
