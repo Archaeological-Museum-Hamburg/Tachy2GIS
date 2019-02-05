@@ -60,12 +60,12 @@ class FieldDialog(Ui_Targetselection):
 
     ## This function maps pyshp data types to python data types.
     @staticmethod
-    def fieldTypeFromShapefile(fieldMetadata):
+        def fieldTypeFromShapefile(fieldMetadata):
         # the way pyshp handles field types is (roughly) described here:
         # https://github.com/GeospatialPython/pyshp#reading-shapefile-meta-data
         baseType = fieldMetadata[1]
         decimalPrecision = fieldMetadata[3]
-        if baseType == 'N':
+        if baseType in ('N', 'F'):
             # these are numbers, ints have zero decimal places
             if decimalPrecision == 0:
                 return int
@@ -76,6 +76,8 @@ class FieldDialog(Ui_Targetselection):
             return str
         if baseType == 'D':
             return dateTimeParser.parse
+        if baseType == 'L':
+            return bool
         # An exception is thrown if an unknown type pops up
         raise ValueError('Unknown data type: ' + baseType)
 
