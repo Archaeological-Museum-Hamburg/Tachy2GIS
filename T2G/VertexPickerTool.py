@@ -25,11 +25,10 @@ class T2G_VertexePickerTool(QgsMapTool):
         QgsMapTool.__init__(self, parent.iface.mapCanvas())
         self.parent = parent
         self.canvas = parent.iface.mapCanvas()
-        #self.emitPoint = QgsMapToolEmitPoint(self.canvas)
+        # self.emitPoint = QgsMapToolEmitPoint(self.canvas)
         self.vertexList = parent.vertexList
         self.rubberBand = QgsRubberBand(self.canvas)
-        self.geometryType = QgsWkbTypes.Polygon
-        self.geometryType = 3
+        self.geometryType = QgsWkbTypes.PolygonGeometry
         self.rubberBand.setColor(self.RB_COLOR)
         self.rubberBand.setFillColor(self.RB_FILLCOLOR)
         self.rubberBand.setWidth(1)
@@ -40,7 +39,7 @@ class T2G_VertexePickerTool(QgsMapTool):
     def setGeometryType(self, layer):
         if not self.alive:
             return
-        self.geometryType = layer.geometryType()
+        self.geometryType = layer.wkbType()
         geometry = self.rubberBand.asGeometry()
         self.rubberBand.reset(self.geometryType)
         self.rubberBand.addGeometry(geometry, layer)
