@@ -60,7 +60,7 @@ class FieldDialog(Ui_Targetselection):
 
     ## This function maps pyshp data types to python data types.
     @staticmethod
-        def fieldTypeFromShapefile(fieldMetadata):
+    def fieldTypeFromShapefile(fieldMetadata):
         # the way pyshp handles field types is (roughly) described here:
         # https://github.com/GeospatialPython/pyshp#reading-shapefile-meta-data
         baseType = fieldMetadata[1]

@@ -6,10 +6,12 @@
 import os.path
 import re
 
-from PyQt5.QtCore import *
+from PyQt5 import Qt
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QMutex, QAbstractTableModel, Qt
 from PyQt5.QtWidgets import QApplication as qApp
 from qgis.core import *
 from qgis.gui import *
+from .shaping import add_shape
 
 from . import GSI_Parser
 from .. import AnchorUpdateDialog
@@ -153,12 +155,6 @@ class T2G_Vertex():
         self.z = z
         self.wkt = wkt
         self.wktDimensions = 0
-        if self.x is not None:
-            self.wktDimensions += 1
-        if self.y is not None:
-            self.wktDimensions += 1
-        if self.z is not None:
-            self.wktDimensions += 1
         if not wkt == "":
             self.setWkt(wkt)
 
@@ -254,6 +250,7 @@ class T2G_VertexList(QAbstractTableModel):
         self.maxIndex = None
         self.updateThread = QThread()
         self.anchorUpdater = None
+        self.layer = None
     
     ## Reimplemented from QAbstractTableModel
     def rowCount(self, *args, **kwargs):
@@ -302,6 +299,7 @@ class T2G_VertexList(QAbstractTableModel):
         if layer is None:
             # empty or nonexisting layers leave us with an empty point list and index.
             return
+        self.layer = layer
         # Initializing the progress dialog
         aud = AnchorUpdateDialog.AnchorUpdateDialog()
         aud.abortButton.clicked.connect(self.abortUpdate)
@@ -403,54 +401,6 @@ class T2G_VertexList(QAbstractTableModel):
     #  @return a double nested list of coordinates. 
     def getParts(self):
         return [[v.getCoords() for v in self.vertices]]
-    
-    ## creates a shapefile.writer to add a polygon geometry to a shapefile
-    #  @param reader a shapefile.reader that represents the shapefile that is being worked on
-    #  @return a writer that has been used to add the geometry and now waits for attributes to be added 
-    def writePoly(self, reader):
-        if self.vertices[0].wktDimensions > 2:
-            shapeType = shapefile.POLYGONZ
-        else:
-            shapeType = shapefile.POLYGON
-        writer = shapefile.Writer(shapeType)
-        writer.fields = list(reader.fields)
-        writer.records.extend(reader.records())
-        writer._shapes.extend(reader.shapes())
-        vertexParts = self.getParts()
-        writer.poly(parts=vertexParts, shapeType=shapeType)
-        return writer
-    
-    ## creates a shapefile.writer to add a linestring geometry to a shapefile
-    #  @param reader a shapefile.reader that represents the shapefile that is being worked on
-    #  @return a writer that has been used to add the geometry and now waits for attributes to be added 
-    def writeLine(self, reader):
-        if self.vertices[0].wktDimensions > 2:
-            shapeType = shapefile.POLYLINEZ
-        else:
-            shapeType = shapefile.POLYLINE
-        writer = shapefile.Writer(shapeType)
-        writer.fields = list(reader.fields)
-        writer.records.extend(reader.records())
-        writer._shapes.extend(reader.shapes())
-        vertexParts = self.getParts()
-        writer.line(parts=vertexParts, shapeType=shapeType)
-        return writer
-    
-    ## creates a shapefile.writer to add a point geometry to a shapefile
-    #  @param reader a shapefile.reader that represents the shapefile that is being worked on
-    #  @return a writer that has been used to add the geometry and now waits for attributes to be added 
-    def writePoint(self, reader):
-        if self.vertices[0].wktDimensions > 2:
-            shapeType = shapefile.POINTZ
-        else:
-            shapeType = shapefile.POINT
-        writer = shapefile.Writer(shapeType)
-        writer.fields = list(reader.fields)
-        writer.records.extend(reader.records())
-        writer._shapes.extend(reader.shapes())
-        coords = self.vertices[self.selected].getCoords()
-        writer.point(*coords, shapeType=shapeType)
-        return writer
 
     ## Turns the vertices into geometry and writes them to a shapefile
     #  @param targetLayer a vectordatalayer that is suspected to be based on a
@@ -462,25 +412,13 @@ class T2G_VertexList(QAbstractTableModel):
             return
         if not targetLayer.dataProvider().name() == 'ogr':
             return
-        # the absolute path to the shapefile is extracted fromits URI and a
-        # shapefile.reader is created
+        # the absolute path to the shapefile is extracted from its URI
         dataUri = targetLayer.dataProvider().dataSourceUri()
         targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
-        reader = shapefile.Reader(targetFileName)
-        targetType = reader.shapeType
-        # the two and three dimensional types are distinct from each other
-        # so we can't just check for 'Polygon' and run with it:
-        if targetType in (shapefile.POLYGON, shapefile.POLYGONZ):
-            writer = self.writePoly(reader)
-        elif targetType in (shapefile.POLYLINE, shapefile.POLYLINEZ):
-            writer = self.writeLine(reader)
-        elif targetType in (shapefile.POINT, shapefile.POINTZ):
-            writer = self.writePoint(reader)
-        else:
-            return
-        # with the geometry in there, all that's left is to add the attributes
-        writer.record(*fieldData)
-        writer.save(targetFileName)
+        add_shape(targetFileName, self.getParts(), fieldData)
+
+    def get_qgs_points(self):
+        return [vertex.getQgsPointXY() for vertex in self.vertices]
 
 
 if __name__ == '__main__':
