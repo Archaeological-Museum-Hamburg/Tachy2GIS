@@ -39,7 +39,9 @@ class T2G_VertexePickerTool(QgsMapTool):
     def setGeometryType(self, layer):
         if not self.alive:
             return
-        self.geometryType = layer.wkbType()
+        if layer is None:
+            return
+        self.geometryType = layer.geometryType()
         geometry = self.rubberBand.asGeometry()
         self.rubberBand.reset(self.geometryType)
         self.rubberBand.addGeometry(geometry, layer)
