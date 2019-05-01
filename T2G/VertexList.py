@@ -233,6 +233,7 @@ class T2G_VertexList(QAbstractTableModel):
     VERTEX_COLOR = Qt.red
     ### Selected vertices get a different color
     SELECTED_COLOR = Qt.green
+    signal_feature_dumped = pyqtSignal()
     
     ## Ctor
     #  @param vertices the vertex list can be initialized with a list of vertices
@@ -416,6 +417,7 @@ class T2G_VertexList(QAbstractTableModel):
         dataUri = targetLayer.dataProvider().dataSourceUri()
         targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
         add_shape(targetFileName, self.getParts(), fieldData)
+        self.signal_feature_dumped.emit()
 
     def get_qgs_points(self):
         return [vertex.getQgsPointXY() for vertex in self.vertices]

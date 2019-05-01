@@ -23,6 +23,16 @@
 import os.path
 from . import resources
 
+import pydevd
+try:
+    pydevd.settrace('localhost',
+                    port=6565,
+                    stdoutToServer=True,
+                    stderrToServer=True,
+                    suspend=False)
+except ConnectionRefusedError:
+    pass
+
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
@@ -36,6 +46,7 @@ from .T2G.TachyReader import TachyReader
 from .FieldDialog import FieldDialog
 from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
+from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 
 
 # Initialize Qt resources from file resources.py
@@ -47,7 +58,9 @@ class Tachy2Gis:
     
     """QGIS Plugin Implementation."""
     # Custom methods go here:
-    
+
+    NO_PORT = 'Select tachymeter USB port'
+
     def vertexReceived(self, line):
         newVtx = T2G_Vertex.fromGSI(line)
         self.mapTool.addVertex(vtx=newVtx)
@@ -72,8 +85,7 @@ class Tachy2Gis:
                 # otherwise the list is cleared
                 self.mapTool.clear()
             targetLayer.dataProvider().forceReload()
-            targetLayer.dataProvider().dataChanged.emit()
-            #targetLayer.triggerRepaint()
+            targetLayer.triggerRepaint()
             self.vertexList.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
         else:
             return
@@ -103,10 +115,11 @@ class Tachy2Gis:
 
     def connectSerial(self):
         port = self.dlg.portComboBox.currentText()
-        self.tachyReader.setPort(port)
+        if not port == Tachy2Gis.NO_PORT:
+            self.tachyReader.setPort(port)
 
     def setLog(self):
-        logFileName = QFileDialog.getSaveFileName()[0]
+        logFileName = QFileDialog.getOpenFileName()[0]
         self.dlg.logFileEdit.setText(logFileName)
         self.tachyReader.setLogfile(logFileName)
 
@@ -116,11 +129,17 @@ class Tachy2Gis:
         # the 'Dump' button is disabled as long there are none:
         self.dlg.dumpButton.setEnabled(verticesAvailable)
 
+    def zoom_full_extent(self):
+        canvas = iface.mapCanvas()
+        canvas.zoomToFullExtent()
+        canvas.refresh()
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
         It is called in ad_action"""
-        portNames = [port.portName() for port in QSerialPortInfo.availablePorts()]
+        portNames = [Tachy2Gis.NO_PORT]
+        portNames.extend([port.portName() for port in QSerialPortInfo.availablePorts()])
         self.dlg.portComboBox.addItems(portNames)
         self.dlg.portComboBox.currentIndexChanged.connect(self.connectSerial)
 
@@ -147,6 +166,18 @@ class Tachy2Gis:
         
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
         self.vertexList.layoutChanged.connect(self.dumpEnabled)
+        self.fieldDialog.buttonBox.accepted.connect(self.extent_provider.add_feature)
+        self.dlg.zoomResetButton.clicked.connect(self.extent_provider.reset)
+
+        self.dlg.zoomModeComboBox.addItems(['Layer',
+                                            'Last feature',
+                                            'Last 2 features',
+                                            'Last 4 features',
+                                            'Last 8 features',
+                                            ])
+        self.dlg.zoomModeComboBox.currentIndexChanged.connect(self.extent_provider.set_mode)
+        self.dlg.zoomActiveCheckBox.stateChanged.connect(self.auto_zoomer.set_active)
+        self.extent_provider.ready.connect(self.auto_zoomer.apply)
 
     
     ## Constructor
@@ -181,7 +212,9 @@ class Tachy2Gis:
         
         ## From here: Own additions
         self.vertexList = T2G_VertexList()
-        
+        self.extent_provider = ExtentProvider(self.vertexList, self.iface.mapCanvas())
+        self.auto_zoomer = AutoZoomer(self.iface.mapCanvas(), self.extent_provider)
+
         self.mapTool = T2G_VertexePickerTool(self)
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())

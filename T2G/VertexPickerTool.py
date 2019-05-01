@@ -7,7 +7,7 @@ from qgis.core import *
 from qgis.gui import *
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from PyQt5.QtGui import QColor
 from .VertexList import T2G_Vertex, T2G_VertexList
 
 

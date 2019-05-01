@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>Tachy2GisDialogBase</class>
  <widget class="QDialog" name="Tachy2GisDialogBase">
@@ -6,16 +5,40 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>566</width>
-    <height>491</height>
+    <width>696</width>
+    <height>561</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Tachy2GIS</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="7" column="0">
+   <item column="0" row="7">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPushButton" name="zoomResetButton">
+       <property name="text">
+        <string>Reset zoom</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="zoomModeComboBox">
+       <property name="currentText">
+        <string />
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="zoomActiveCheckBox">
+       <property name="text">
+        <string />
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
@@ -45,7 +68,7 @@
      </item>
     </layout>
    </item>
-   <item row="6" column="0">
+   <item column="0" row="6">
     <widget class="QTableView" name="vertexTableView">
      <property name="selectionMode">
       <enum>QAbstractItemView::SingleSelection</enum>
@@ -55,18 +78,18 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
+   <item column="0" row="5">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <layout class="QGridLayout" name="gridLayout_2" rowstretch="0,0,0,0,0,0" columnstretch="0,1,0">
-       <item row="5" column="0">
+      <layout class="QGridLayout" columnstretch="0,1,0" name="gridLayout_2" rowstretch="0,0,0,0,0,0">
+       <item column="0" row="5">
         <widget class="QLabel" name="label_3">
          <property name="text">
           <string>Source layer:</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="2">
+       <item column="2" row="5">
         <widget class="QPushButton" name="dumpButton">
          <property name="maximumSize">
           <size>
@@ -79,24 +102,24 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item column="0" row="3">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Log file:</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="2">
+       <item column="2" row="3">
         <widget class="QPushButton" name="logFileButton">
          <property name="text">
           <string>Select</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
-        <widget class="QgsMapLayerComboBox" name="sourceLayerComboBox"/>
+       <item column="1" row="5">
+        <widget class="QgsMapLayerComboBox" name="sourceLayerComboBox" />
        </item>
-       <item row="3" column="1">
+       <item column="1" row="3">
         <widget class="QLineEdit" name="logFileEdit">
          <property name="readOnly">
           <bool>true</bool>
@@ -107,7 +130,7 @@
      </item>
     </layout>
    </item>
-   <item row="8" column="0">
+   <item column="0" row="8">
     <widget class="QDialogButtonBox" name="button_box">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -117,8 +140,8 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
-    <widget class="QComboBox" name="portComboBox"/>
+   <item column="0" row="0">
+    <widget class="QComboBox" name="portComboBox" />
    </item>
   </layout>
  </widget>
@@ -126,10 +149,10 @@
   <customwidget>
    <class>QgsMapLayerComboBox</class>
    <extends>QComboBox</extends>
-   <header>qgsmaplayercombobox.h</header>
+   <header>qgis.gui</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>button_box</sender>
