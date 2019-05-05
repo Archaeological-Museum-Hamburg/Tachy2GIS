@@ -62,3 +62,20 @@ Changing the geometry type to one that is different from the source type may mes
 6. Open the field dialog by clicking 'Dump'
 7. Select your target layer and cancel (The layer stays selected)
 8. Delete your random vertex and begin the real work
+
+## Developer Notes
+
+To provide a consistent working environment that only minimally messes up your python installation, T2G now comes with a [Pipfile](https://github.com/pypa/pipenv) that keeps track of dependencies.  to use this, first create an environment by calling
+
+`$ pipenv --three --site-packages`
+
+and then install all packages with
+
+`$ pipenv install`
+
+The `--site-packages` flag is required to integrate everything else that's required by QGIS into the virtual environment. You can now start QGIS from a pipenv shell:
+
+```
+$ pipenv shell
+$ qgis &
+```
