@@ -1,8 +1,10 @@
-**Dependencies:** *Tachy2GIS reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`.**
+**Dependencies:** *Tachy2GIS reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`. Alternatively you can use pipenv to handle the dependencies for you, see the section **Developer Notes** further down for more info on this.*
 
-**Restrictions:** *Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.**
+**Restrictions:** *Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.*
 
-**Known Issues:** *There's a problem with "Map Refresh" in QGIS 3.0.3. Resulting from this the "Object Count" of a new and empty layer stays at "0" and you can't zoom in to the measured objects. As a workaround make a copy of the layer and zoom in then.**
+**Known Issues:** *There's a problem with "Map Refresh" in QGIS 3.0.3. Resulting from this the "Object Count" of a new and empty layer stays at "0" and you can't zoom in to the measured objects. As a workaround make a copy of the layer and zoom in then.*
+
+**Funding:** *Free software isn't necessarily produced for free. The development of Tachy2GIS has been funded by the [Archeological Museum of Hamburg](https://amh.de/) and the [German Archeological Institute](https://www.dainst.org/). If you want to get into the boat, feel free ton contact us.*
 
 # Tachy2GIS: Concepts and Architecture
 

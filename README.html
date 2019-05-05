@@ -30,6 +30,45 @@
 <p><em>Note:</em> Source- and targetlayer may (and will likely) be identical. They only play different roles in the process. If source and target are identical, all geometries that exist before the one that is being added are available for snapping.</p>
 <p>Both layers have to be vector layers and the target layer has to be a shapefile. They do <em>not</em> have to be of the same geometry type though, meaning it is possible to create a polygon target layer that is anchored to reference points in a point source layer.</p>
 <h2 id="the-main-dialog">The main dialog</h2>
-<p>The main dialog win
+<p>The main dialog window contains the following elements from top to bottom:</p>
+<ul>
+<li>A comboBox to select the port on which the tachymeter is connected.</li>
+<li>A text field to show the path to the tachymeter log file and a button to select a location.</li>
+<li>A comboBox to select the source layer and next to it a button that opens the export (‘Dump’) dialog. The button is disabled until there are actually vertices to export.</li>
+<li>A table that shows all vertices of a new geometry while it is created.</li>
+<li>Two buttons to delete single or all vertices from the current geometry.</li>
+<li>‘Cancel’ and ‘Ok’ buttons, which currently both close the dialog.</li>
+</ul>
+<h2 id="connecting-a-tachymeter">Connecting a tachymeter</h2>
+<p>The tachymeter connection is implemented as a polling background thread that checks if there are new data in regular intervals and adds these to the vertex list, which in turn adds a new vertex to the map tool and the main dialog. The connection is established by selecting the COM port that corresponds to the tachymeter in the combobox at the top of the main plugin dialog.</p>
+<p>The connection can be tested by taking a measurement with the tachymeter and checking if it shows up on the vertex table in the main dialog. If it doesn’t, change the COM port and try again. The port connected to your tachymeter will likely have “USB” in its name, so look for this.</p>
+<p>Also make sure that your tachymeter is set to the same crs as your target layer. Currently there is no way to tell which format is used, so better be careful.</p>
+<h2 id="creating-new-geometries-and-setting-their-attributes">Creating new geometries and setting their attributes</h2>
+<p>Geometries are created by sending measurements from the tachymeter or by adding vertices manually. Once all vertices are created, they are written to the target layer by clicking the ‘Dump’ button near the top of the main dialog. This opens the ‘Field Dialog’ where you can select the target layer and set the attribute values of the new feature. If there already are features present in the target layer, the values of the most recent feature are used as default values for the new one. The field dialog looks like this:</p>
+<ul>
+<li>A comboBox to select the target layer</li>
+<li>A table of attributes and values. The left column shows the attribute names and the left is used to enter values</li>
+<li>‘Cancel’ and ‘OK’ buttons. ‘Cancel’ closes the dialog while ‘OK’ attempts to write the new feature, then clears the vertex list in the main dialog and reloads the map view before closing the dialog</li>
+</ul>
+<p>Changing the geometry type to one that is different from the source type may mess up the visual representation of the vertices on the map. This is harmless but unsettling and should be avoided.</p>
+<h2 id="typical-workflow">Typical workflow</h2>
+<ol type="1">
+<li>Open your project in QGIS</li>
+<li>Open the T2G dialog and select the COM port of the tachymeter</li>
+<li>Test the tachymeter connection by measuring any point (this is a great opportunity to double check if the tachy and your project are using the same CRS)</li>
+<li>Choose a location for your log file, if youwant to generate one</li>
+<li>Select your source layer from the combobox</li>
+<li>Open the field dialog by clicking ‘Dump’</li>
+<li>Select your target layer and cancel (The layer stays selected)</li>
+<li>Delete your random vertex and begin the real work</li>
+</ol>
+<h2 id="developer-notes">Developer Notes</h2>
+<p>To provide a consistent working environment that only minimally messes up your python installation, T2G now comes with a <a href="https://github.com/pypa/pipenv">Pipfile</a> that keeps track of dependencies. to use this, first create an environment by calling</p>
+<p><code>$ pipenv --three --site-packages</code></p>
+<p>and then install all packages with</p>
+<p><code>$ pipenv install</code></p>
+<p>The <code>--site-packages</code> flag is required to integrate everything else that’s required by QGIS into the virtual environment. You can now start QGIS from a pipenv shell:</p>
+<pre><code>$ pipenv shell
+$ qgis &amp;</code></pre>
 </body>
 </html>
