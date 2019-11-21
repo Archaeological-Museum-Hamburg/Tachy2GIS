@@ -22,7 +22,7 @@
 """
 import os.path
 from . import resources
-
+"""
 import pydevd
 try:
     pydevd.settrace('localhost',
@@ -32,7 +32,7 @@ try:
                     suspend=False)
 except ConnectionRefusedError:
     pass
-
+"""
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
@@ -47,6 +47,7 @@ from .FieldDialog import FieldDialog
 from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
+from .T2G.geo_com import connect_beep
 
 
 # Initialize Qt resources from file resources.py
@@ -117,6 +118,7 @@ class Tachy2Gis:
         port = self.dlg.portComboBox.currentText()
         if not port == Tachy2Gis.NO_PORT:
             self.tachyReader.setPort(port)
+            connect_beep(port)
 
     def setLog(self):
         logFileName = QFileDialog.getOpenFileName()[0]

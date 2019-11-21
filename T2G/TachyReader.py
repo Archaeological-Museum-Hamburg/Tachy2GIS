@@ -7,9 +7,11 @@ from PyQt5.QtSerialPort import QSerialPort
 import datetime
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 
+GEOCOM_RESPONSE_IDENTIFIER = "%R1P"
 
 class TachyReader(QObject):
     lineReceived = pyqtSignal(str)
+    geo_com_received = pyqtSignal(str)
     pollingInterval = 1000
     def __init__(self, baudRate, parent=None):
         super(self.__class__, self).__init__(parent)
@@ -24,7 +26,10 @@ class TachyReader(QObject):
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
-            self.lineReceived.emit(line_string)
+            if line_string.startswith(GEOCOM_RESPONSE_IDENTIFIER):
+                self.geo_com_received.emit(line_string)
+            else:
+                self.lineReceived.emit(line_string)
             if self.hasLogFile:
                 timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 with open(self.logFileName, 'a') as logFile:
@@ -44,7 +49,7 @@ class TachyReader(QObject):
     def setPort(self, portName):
         self.ser.close()
         self.ser.setPortName(portName)
-        self.ser.open(QSerialPort.ReadOnly)
+        self.ser.open(QSerialPort.ReadWrite)
 
     @pyqtSlot()
     def shutDown(self):

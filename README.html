@@ -13,9 +13,10 @@
   </style>
 </head>
 <body>
-<p><strong>Dependencies:</strong> *Tachy2GIS reqires pyshp to run. If you don’t have it already (test this by typing <code>import shapefile</code> in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via <code>pip</code>.**</p>
-<p><strong>Restrictions:</strong> *Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.**</p>
-<p><strong>Known Issues:</strong> *There’s a problem with “Map Refresh” in QGIS 3.0.3. Resulting from this the “Object Count” of a new and empty layer stays at “0” and you can’t zoom in to the measured objects. As a workaround make a copy of the layer and zoom in then.**</p>
+<p><strong>Dependencies:</strong> <em>Tachy2GIS reqires pyshp to run. If you don’t have it already (test this by typing <code>import shapefile</code> in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via <code>pip</code>. Alternatively you can use pipenv to handle the dependencies for you, see the section <strong>Developer Notes</strong> further down for more info on this.</em></p>
+<p><strong>Restrictions:</strong> <em>Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.</em></p>
+<p><strong>Known Issues:</strong> <em>There’s a problem with “Map Refresh” in QGIS 3.0.3. Resulting from this the “Object Count” of a new and empty layer stays at “0” and you can’t zoom in to the measured objects. As a workaround make a copy of the layer and zoom in then.</em></p>
+<p><strong>Funding:</strong> <em>Free software isn’t necessarily produced for free. The development of Tachy2GIS has been funded by the <a href="https://amh.de/">Archeological Museum of Hamburg</a> and the <a href="https://www.dainst.org/">German Archeological Institute</a>. If you want to get into the boat, feel free ton contact us.</em></p>
 <h1 id="tachy2gis-concepts-and-architecture">Tachy2GIS: Concepts and Architecture</h1>
 <p>Tachy2GIS (henceforth ‘T2G’) enales you to create geometries directly form tachymeter input while at the same time adding vertices manually. Manually generated vertices snap to features that are already present, in order to avoid overlapping features or holes between directly adjactant geometries. T2G consists of four main elements:</p>
 <ul>
