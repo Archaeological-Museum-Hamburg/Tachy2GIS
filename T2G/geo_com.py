@@ -1,12 +1,12 @@
 from . import gc_constants as gc
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, QThread
 from PyQt5.QtSerialPort import QSerialPort
 from time import time
 
 
-class GeoCOMMessage:
+class GeoCOMRequest:
     PREFIX = "%R1Q"
-    TERMINATOR = ""
+    TERMINATOR = "\r\n"
 
     def __init__(self, command, *args):
         self.command = str(command)
@@ -14,13 +14,14 @@ class GeoCOMMessage:
         self.transaction_id = 0
 
     def __str__(self):
-        msg = ",".join((GeoCOMMessage.PREFIX, self.command))
+        msg = ",".join((GeoCOMRequest.PREFIX, self.command))
         if self.transaction_id:
             msg = ",".join((msg, self.transaction_id))
         msg = ":".join((msg, self.args))
-        msg += GeoCOMMessage.TERMINATOR
+        msg += GeoCOMRequest.TERMINATOR
         return msg
 
+    @property
     def bytes(self):
         return str(self).encode("ascii")
 
@@ -74,6 +75,38 @@ class GeoCOMMessageQueue:
     def handle_reply(self, reply):
         request = self.slots.pop(reply.transaction_id)['message']
         return request, reply
+
+
+class GeoCOMPing(QThread):
+    found_tachy = pyqtSignal(str)
+    found_something = pyqtSignal(str)
+    timed_out = pyqtSignal(str)
+
+    def __init__(self, port_name, payload, timeout=1000):
+        self.ser = QSerialPort()
+        self.ser.setPortName(port_name)
+        self.ser.open(QSerialPort.ReadWrite)
+        self.ser.write(payload.bytes)
+        self.timer = QTimer()
+        self.timer.setInterval(timeout)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.read)
+        self.timer.start()
+        super().__init__()
+
+    def read(self):
+        if self.ser.canReadLine():
+            reply = bytes(self.ser.readLine()).decode('ascii')
+            self.ser.close()
+            if reply.startswith(GeoCOMReply.PREFIX):
+                self.found_tachy.emit(self.ser.portName())
+            else:
+                self.found_something.emit(self.ser.portName())
+        else:
+            self.timed_out.emit(self.ser.portName())
+
+        self.ser.close()
+        self.quit()
 
 
 @pyqtSlot(str)

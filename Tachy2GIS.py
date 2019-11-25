@@ -144,6 +144,7 @@ class Tachy2Gis:
         portNames.extend([port.portName() for port in QSerialPortInfo.availablePorts()])
         self.dlg.portComboBox.addItems(portNames)
         self.dlg.portComboBox.currentIndexChanged.connect(self.connectSerial)
+        self.dlg.pingConnect.clicked.connect(self.tachyReader.hook_up)
 
         self.dlg.logFileButton.clicked.connect(self.setLog)
 
