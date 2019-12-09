@@ -13,10 +13,13 @@ class GeoCOMRequest:
         self.args = ','.join(map(str, args))
         self.transaction_id = 0
 
+    def set_transaction_id(self, slot):
+        self.transaction_id = slot
+
     def __str__(self):
         msg = ",".join((GeoCOMRequest.PREFIX, self.command))
         if self.transaction_id:
-            msg = ",".join((msg, self.transaction_id))
+            msg = ",".join((msg, str(self.transaction_id)))
         msg = ":".join((msg, self.args))
         msg += GeoCOMRequest.TERMINATOR
         return msg
@@ -51,6 +54,10 @@ class GeoCOMMessageQueue:
     def __init__(self, n_slots=7):
         self.indices = list(range(1, n_slots + 1))
         self.slots = {}
+        self.ser = None
+
+    def set_serial(self, serial):
+        self.ser = serial
 
     def append(self, msg, timeout=2):
         def first_free_slot():
@@ -58,11 +65,14 @@ class GeoCOMMessageQueue:
                 if i not in self.slots.keys():
                     return i
             return False
-
+        if self.ser is None:
+            return False
         slot = first_free_slot()
-        if slot:
+        if slot and self.ser:
             self.slots[slot] = {"message": msg,
                                 "timeout": time() + timeout}
+            msg.set_transaction_id(slot)
+            self.ser.write(msg.bytes)
         return slot
 
     def check_timeouts(self):
@@ -107,6 +117,37 @@ class GeoCOMPing(QThread):
 
         self.ser.close()
         self.quit()
+
+
+class GeoCOMReplyHandler:
+    def __init__(self, command, types, signal):
+        self.command = command
+        self.types = types
+        self.signal = signal
+
+    def handle(self, reply):
+        # Will not work because of type mismatch between reply retcodes
+        # (str) and lib constants (int) but looks nicer this way.
+        if reply.com_code == gc.GRC_OK and reply.ret_code == gc.GRC_OK:
+            casted = [t(value) for t, value in zip(self.types, reply.results)]
+            self.signal.emit(casted)
+
+
+class GeoCOMCallCenter:
+    """This is the skeleton of a prototype that mainly exists to describe
+    a design. Use at your own risk.
+    """
+    def __init__(self):
+        self.handlers = {}
+
+    def register(self, handler):
+        self.handlers[str(handler.command)] = handler
+
+    @pyqtSlot(GeoCOMRequest, GeoCOMReply)
+    def handle(self, request, reply):
+        handler = self.handlers.get(request.command, False)
+        if handler:
+            handler.handle(reply)
 
 
 @pyqtSlot(str)

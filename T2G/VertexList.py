@@ -95,25 +95,26 @@ class AnchorUpdater(QObject):
             for vertext in wkt.split(','):
                 # a regex pulls out the numbers, of which the first three are mapped to float
                 dimensions = WKT_VALUES.findall(vertext)
-                coordinates = tuple(map(float, dimensions[:3]))
-                # this ensures that only distinct vertices are indexed
-                if coordinates not in allVertices:
-                    allVertices.append(coordinates)
-                    # preparing a new wkt string representing the vertex as point
-                    coordText = WKT_STRIP.sub('', vertext)
-                    extension = WKT_EXTENSIONS[len(dimensions) - 2]
-                    anchorWkt = 'Point' + extension + '(' + coordText + ')'
-                    self.anchorPoints.append(anchorWkt)
-                    # creating and adding a new entry to the index. The id is 
-                    # synchronized with the point list 
-                    newAnchor = QgsFeature(pointIndex)
-                    pointIndex += 1
-                    #anchorPoint.fromWkt(anchorWkt)
-                    newAnchor.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(coordinates[0], coordinates[1])))
-                    self.anchorIndex.insertFeature(newAnchor)
-                    # Just checking if this worked:
-                    testWkt = newAnchor.geometry().asWkt()
-                    nn = self.anchorIndex.nearestNeighbor(QgsPointXY(coordinates[0], coordinates[1]), 1)
+                if len(dimensions) >= 3:
+                    coordinates = tuple(map(float, dimensions[:3]))
+                    # this ensures that only distinct vertices are indexed
+                    if coordinates not in allVertices:
+                        allVertices.append(coordinates)
+                        # preparing a new wkt string representing the vertex as point
+                        coordText = WKT_STRIP.sub('', vertext)
+                        extension = WKT_EXTENSIONS[len(dimensions) - 2]
+                        anchorWkt = 'Point' + extension + '(' + coordText + ')'
+                        self.anchorPoints.append(anchorWkt)
+                        # creating and adding a new entry to the index. The id is
+                        # synchronized with the point list
+                        newAnchor = QgsFeature(pointIndex)
+                        pointIndex += 1
+                        #anchorPoint.fromWkt(anchorWkt)
+                        newAnchor.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(coordinates[0], coordinates[1])))
+                        self.anchorIndex.insertFeature(newAnchor)
+                        # Just checking if this worked:
+                        testWkt = newAnchor.geometry().asWkt()
+                        nn = self.anchorIndex.nearestNeighbor(QgsPointXY(coordinates[0], coordinates[1]), 1)
                 self.signalAnchorCount.emit(i + 1)
                 qApp.processEvents()
                 if self.abort: 
@@ -219,6 +220,7 @@ class T2G_Vertex():
         y = vtxData['targetY']
         z = vtxData['targetZ']
         source = T2G_Vertex.SOURCE_EXTERNAL
+        QgsMessageLog.logMessage("GSI received")
         return T2G_Vertex(label, source, x, y, z)
 
 

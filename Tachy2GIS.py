@@ -139,12 +139,9 @@ class Tachy2Gis:
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
-        It is called in ad_action"""
-        portNames = [Tachy2Gis.NO_PORT]
-        portNames.extend([port.portName() for port in QSerialPortInfo.availablePorts()])
-        self.dlg.portComboBox.addItems(portNames)
-        self.dlg.portComboBox.currentIndexChanged.connect(self.connectSerial)
-        self.dlg.pingConnect.clicked.connect(self.tachyReader.hook_up)
+        It is called in add_action"""
+        self.dlg.tachy_connect_button.clicked.connect(self.tachyReader.hook_up)
+        self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
 
         self.dlg.logFileButton.clicked.connect(self.setLog)
 
@@ -222,11 +219,11 @@ class Tachy2Gis:
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
-        self.pollingThread = QThread()
-        self.tachyReader.moveToThread(self.pollingThread)
-        self.pollingThread.start()
+        # self.pollingThread = QThread()
+        # self.tachyReader.moveToThread(self.pollingThread)
+        # self.pollingThread.start()
         self.tachyReader.lineReceived.connect(self.vertexReceived)
-        self.tachyReader.beginListening()
+        # self.tachyReader.beginListening()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -338,11 +335,7 @@ class Tachy2Gis:
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
-        del self.toolbar
-        if self.pollingThread.isRunning():
-            self.tachyReader.shutDown()
-            self.pollingThread.terminate()
-            self.pollingThread.wait()
+        del self.toolbarminec
 
     def run(self):
         """Run method that performs all the real work"""
