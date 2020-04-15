@@ -2,15 +2,27 @@
 # -*- coding=utf-8 -*-
 
 
-from PyQt5.QtSerialPort import QSerialPort
+from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
 import datetime
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
+
+from .GSI_Parser import GSIPing
+from . import gc_constants as gc
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, QThread
+from qgis.core import QgsMessageLog
+from .geo_com import GeoCOMRequest, GeoCOMMessageQueue, GeoCOMReply, GeoCOMPing
+from . import gc_constants
+
+GEOCOM_RESPONSE_IDENTIFIER = "%R1P"
 
 
-class TachyReader(QObject):
+class TachyReader(QThread):
     lineReceived = pyqtSignal(str)
+    mirror_z_received = pyqtSignal(str)
+    geo_com_received = pyqtSignal(str)
+    got_it = pyqtSignal(str)
     pollingInterval = 1000
+
     def __init__(self, baudRate, parent=None):
         super(self.__class__, self).__init__(parent)
         self.pollingTimer = QTimer()
@@ -19,18 +31,44 @@ class TachyReader(QObject):
         self.ser.setBaudRate(baudRate)
         self.hasLogFile = False
         self.logFileName = ''
+        self.queue = GeoCOMMessageQueue()
+        super().__init__()
+
+    def hook_up(self):
+        port_names = [port.portName() for port in QSerialPortInfo.availablePorts()]
+        beep = GeoCOMRequest(gc.BMM_BeepAlarm)
+        for port_name in port_names:
+            gsi_ping = GeoCOMPing(port_name, beep, 2000)
+            gsi_ping.found_tachy.connect(self.setPort)
+            gsi_ping.exec()
 
     def poll(self):
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
-            self.lineReceived.emit(line_string)
-            if self.hasLogFile:
-                timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                with open(self.logFileName, 'a') as logFile:
-                    logFile.write(timeStamp + '\t' + line_string)
+            if line_string.startswith(GEOCOM_RESPONSE_IDENTIFIER):
+                QgsMessageLog.logMessage("Received GeoCOM Message: " + line_string)
+                request, reply = self.queue.handle_reply(line_string)
+                if reply.ret_code == gc_constants.GRC_OK:
+                    z = reply.results[0]
+                    self.mirror_z_received.emit(z)
+            else:
+                self.lineReceived.emit(line_string)
+                if self.hasLogFile:
+                    timeStamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    with open(self.logFileName, 'a') as logFile:
+                        logFile.write(timeStamp + '\t' + line_string)
         else:
             pass
+        timed_out = self.queue.check_timeouts()
+        if timed_out:
+            QgsMessageLog.logMessage(str(len(timed_out)) + " GeoCOM requests timed out.")
+
+    @pyqtSlot()
+    def request_mirror_z(self):
+        req = GeoCOMRequest(gc_constants.TMC_GetHeight)
+        self.queue.append(req)
+        QgsMessageLog.logMessage("Sent: " + str(req))
 
     def setLogfile(self, logFileName):
         self.hasLogFile = True
@@ -44,7 +82,12 @@ class TachyReader(QObject):
     def setPort(self, portName):
         self.ser.close()
         self.ser.setPortName(portName)
-        self.ser.open(QSerialPort.ReadOnly)
+        self.ser.open(QSerialPort.ReadWrite)
+        self.queue.set_serial(self.ser)
+        QgsMessageLog.logMessage("Connection established: " + portName)
+        self.got_it.emit('404')
+        self.beginListening()
+        # self.request_mirror_z()
 
     @pyqtSlot()
     def shutDown(self):

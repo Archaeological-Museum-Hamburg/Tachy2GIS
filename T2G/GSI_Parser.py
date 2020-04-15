@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # This parser uses the dictionararies defined by 
 #
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from PyQt5.QtSerialPort import QSerialPort
 
 dict_projections = {
     "WGS84": 4326,
@@ -284,6 +286,73 @@ dict_typeConversions = {
     "DATE": complex,
     "LONG": int,
     }
+
+REPLY_ACK = '?'
+BEEP = 'BEEP/1\r\n'.encode('ascii')
+
+
+class GSIPing(QThread):
+    found_tachy = pyqtSignal(str)
+    found_something = pyqtSignal(str)
+    timed_out = pyqtSignal(str)
+
+    def __init__(self, port_name, timeout=2000):
+        self.ser = QSerialPort()
+        self.ser.setPortName(port_name)
+        self.ser.open(QSerialPort.ReadWrite)
+        self.ser.write(BEEP)
+        self.timer = QTimer()
+        self.timer.setInterval(timeout)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.read)
+        self.timer.start()
+        super().__init__()
+
+    def read(self):
+        if self.ser.canReadLine():
+            reply = bytes(self.ser.readLine()).decode('ascii')
+            self.ser.close()
+            if reply.startswith(REPLY_ACK):
+                self.found_tachy.emit(self.ser.portName())
+            else:
+                self.found_something.emit(self.ser.portName())
+        else:
+            self.timed_out.emit(self.ser.portName())
+
+        self.ser.close()
+        self.quit()
+
+
+class GSIMessage:
+    def __init__(self, wi, value):
+        pass
+
+
+class GSIWord:
+    def __init__(self, txt):
+        txt = txt.strip().replace('*', '')
+        header = txt[:7]
+        self.data = header[7:]
+        self.wi = header[:2]
+        self.len = len(self.data)
+        self.index_info = None if header[3] == '.' else header[3]
+        self.input_mode = None if header[4] == '.' else header[4]
+        self.unit = header[5]
+        sign = header[6]
+        self.multiplier = 1 if sign == '+' else -1
+
+    def get_value(self):
+        return int(self.data) / dict_units_dividers * self.sign
+
+    def get_content(self):
+        return dict_labels[self.wi]
+
+
+def parse_word(word):
+    header = word[:7]
+    data = word[7:]
+    wi = header
+
 
 def parse(line):
     extracted = {}
