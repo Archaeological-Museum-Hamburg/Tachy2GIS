@@ -15,6 +15,28 @@ from . import gc_constants
 
 GEOCOM_RESPONSE_IDENTIFIER = "%R1P"
 
+SERIAL_AVAILABLE = '🔌'      # Emoji 'electric plug', maybe cannot be displayed
+NO_SERIAL_AVAILABLE = '⚠️'
+
+
+class AvailabilityWatchdog(QThread):
+    serial_available = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super(self.__class__, self).__init__(parent)
+        self.pollingTimer = QTimer()
+        self.pollingTimer.timeout.connect(self.poll)
+        super().__init__()
+
+    def start(self):
+        self.pollingTimer.start(2131)
+
+    def poll(self):
+        if QSerialPortInfo.availablePorts():
+            self.serial_available.emit(SERIAL_AVAILABLE)
+        else:
+            self.serial_available.emit(NO_SERIAL_AVAILABLE)
+
 
 class TachyReader(QThread):
     lineReceived = pyqtSignal(str)
@@ -36,6 +58,7 @@ class TachyReader(QThread):
 
     def hook_up(self):
         port_names = [port.portName() for port in QSerialPortInfo.availablePorts()]
+        print(port_names)
         beep = GeoCOMRequest(gc.BMM_BeepAlarm)
         for port_name in port_names:
             gsi_ping = GeoCOMPing(port_name, beep, 2000)

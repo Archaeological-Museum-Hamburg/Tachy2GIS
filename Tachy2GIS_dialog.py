@@ -25,9 +25,11 @@ from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog
 import os
 
+# UI_FILE_NAME = 'Tachy2GIS_dialog_base.ui'
+UI_FILE_NAME = 't2g_widget.ui'
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'Tachy2GIS_dialog_base.ui'))
+    os.path.dirname(__file__), UI_FILE_NAME))
 
 
 class Tachy2GisDialog(QDialog, FORM_CLASS):

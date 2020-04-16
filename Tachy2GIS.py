@@ -42,7 +42,7 @@ from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 
 from .T2G.VertexList import T2G_VertexList, T2G_Vertex
-from .T2G.TachyReader import TachyReader
+from .T2G.TachyReader import TachyReader, AvailabilityWatchdog
 from .FieldDialog import FieldDialog
 from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
@@ -136,24 +136,27 @@ class Tachy2Gis:
         canvas.zoomToFullExtent()
         canvas.refresh()
 
+    def set_tachy_button_text(self, txt):
+        self.dlg.tachy_connect_button.text = txt
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
         It is called in add_action"""
         self.dlg.tachy_connect_button.clicked.connect(self.tachyReader.hook_up)
-        self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
+        # self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
 
-        self.dlg.logFileButton.clicked.connect(self.setLog)
+        # self.dlg.logFileButton.clicked.connect(self.setLog)
 
         self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
-        self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
+        # self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         
-        self.dlg.vertexTableView.setModel(self.vertexList)
-        self.dlg.vertexTableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
-        self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
+        # self.dlg.vertexTableView.setModel(self.vertexList)
+        # self.dlg.vertexTableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        # self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
+        # self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
         
         self.dlg.finished.connect(self.restoreTool)
         self.dlg.accepted.connect(self.restoreTool)
@@ -165,7 +168,7 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
         
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
-        self.vertexList.layoutChanged.connect(self.dumpEnabled)
+        # self.vertexList.layoutChanged.connect(self.dumpEnabled)
         self.fieldDialog.buttonBox.accepted.connect(self.extent_provider.add_feature)
         self.dlg.zoomResetButton.clicked.connect(self.extent_provider.reset)
 
@@ -176,9 +179,9 @@ class Tachy2Gis:
                                             'Last 8 features',
                                             ])
         self.dlg.zoomModeComboBox.currentIndexChanged.connect(self.extent_provider.set_mode)
-        self.dlg.zoomActiveCheckBox.stateChanged.connect(self.auto_zoomer.set_active)
+        # self.dlg.zoomActiveCheckBox.stateChanged.connect(self.auto_zoomer.set_active)
         self.extent_provider.ready.connect(self.auto_zoomer.apply)
-
+        self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
     
     ## Constructor
     #  @param iface An interface instance that will be passed to this class
@@ -203,14 +206,13 @@ class Tachy2Gis:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
-
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr('&Tachy2GIS')
         self.toolbar = self.iface.addToolBar('Tachy2Gis')
         self.toolbar.setObjectName('Tachy2Gis')
         
-        ## From here: Own additions
+        # From here: Own additions
         self.vertexList = T2G_VertexList()
         self.extent_provider = ExtentProvider(self.vertexList, self.iface.mapCanvas())
         self.auto_zoomer = AutoZoomer(self.iface.mapCanvas(), self.extent_provider)
@@ -219,6 +221,8 @@ class Tachy2Gis:
         self.previousTool = None
         self.fieldDialog = FieldDialog(self.iface.activeLayer())
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
+        self.availability_watchdog = AvailabilityWatchdog()
+        self.availability_watchdog.start()
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
@@ -335,7 +339,7 @@ class Tachy2Gis:
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
-        del self.toolbarminec
+        # del self.toolbarminec
 
     def run(self):
         """Run method that performs all the real work"""
