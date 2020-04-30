@@ -8,3 +8,5 @@ pydevd = "*"
 
 [packages]
 pyshp = "~=2.1"
+pyqt5 = "*"
+vtk = "*"

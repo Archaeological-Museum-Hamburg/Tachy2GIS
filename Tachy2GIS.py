@@ -34,12 +34,16 @@ except ConnectionRefusedError:
     pass
 """
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
-from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog
+from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
 from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
+
+import vtk
+from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtk.util.colors import tomato
 
 from .T2G.VertexList import T2G_VertexList, T2G_Vertex
 from .T2G.TachyReader import TachyReader, AvailabilityWatchdog
@@ -48,11 +52,6 @@ from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
-
-
-# Initialize Qt resources from file resources.py
-
-# Import the code for the dialog
 
 
 class Tachy2Gis:
@@ -148,25 +147,25 @@ class Tachy2Gis:
 
         # self.dlg.logFileButton.clicked.connect(self.setLog)
 
-        self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
+        # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
-        # self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
-        
+        self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
+
         # self.dlg.vertexTableView.setModel(self.vertexList)
         # self.dlg.vertexTableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         # self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
         # self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
-        
+
         self.dlg.finished.connect(self.restoreTool)
         self.dlg.accepted.connect(self.restoreTool)
         self.dlg.rejected.connect(self.restoreTool)
-        
+
         self.dlg.sourceLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setActiveLayer)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
-        
+
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
         # self.vertexList.layoutChanged.connect(self.dumpEnabled)
         self.fieldDialog.buttonBox.accepted.connect(self.extent_provider.add_feature)
@@ -182,7 +181,63 @@ class Tachy2Gis:
         # self.dlg.zoomActiveCheckBox.stateChanged.connect(self.auto_zoomer.set_active)
         self.extent_provider.ready.connect(self.auto_zoomer.apply)
         self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
-    
+
+        self.render_container_layout = QVBoxLayout()
+        self.vtk_widget = QVTKRenderWindowInteractor(self.dlg.vtk_frame)
+        self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.render_container_layout.addWidget(self.vtk_widget)
+        self.dlg.vtk_frame.setLayout(self.render_container_layout)
+        self.vtk_widget.Initialize()
+        self.vtk_widget.Start()
+
+        self.renderer = vtk.vtkRenderer()
+        self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
+        #self.vtk_widget.resizeEvent().connect(self.renderer.resize)
+        self.ton()
+
+    def ton(self):
+        cylinder = vtk.vtkCylinderSource()
+        cylinder.SetResolution(8)
+
+        # The mapper is responsible for pushing the geometry into the graphics
+        # library. It may also do color mapping, if scalars or other
+        # attributes are defined.
+        cylinderMapper = vtk.vtkPolyDataMapper()
+        cylinderMapper.SetInputConnection(cylinder.GetOutputPort())
+
+        # The actor is a grouping mechanism: besides the geometry (mapper), it
+        # also has a property, transformation matrix, and/or texture map.
+        # Here we set its color and rotate it -22.5 degrees.
+        cylinderActor = vtk.vtkActor()
+        cylinderActor.SetMapper(cylinderMapper)
+        cylinderActor.GetProperty().SetColor(tomato)
+        cylinderActor.RotateX(30.0)
+        cylinderActor.RotateY(-45.0)
+
+        # Create the graphics structure. The renderer renders into the render
+        # window. The render window interactor captures mouse events and will
+        # perform appropriate camera or actor manipulation depending on the
+        # nature of the events.
+        ren = self.renderer
+        renWin = self.vtk_widget.GetRenderWindow()
+        iren = renWin.GetInteractor()
+        iren.SetRenderWindow(renWin)
+
+        # Add the actors to the renderer, set the background and size
+        ren.AddActor(cylinderActor)
+        ren.SetBackground(0.1, 0.2, 0.4)
+        #renWin.SetSize(200, 200)
+
+        # This allows the interactor to initalize itself. It has to be
+        # called before an event loop.
+        iren.Initialize()
+
+        # We'll zoom in a little by accessing the camera and invoking a "Zoom"
+        # method on it.
+        ren.ResetCamera()
+        ren.GetActiveCamera().Zoom(1.5)
+        renWin.Render()
+
     ## Constructor
     #  @param iface An interface instance that will be passed to this class
     #  which provides the hook by which you can manipulate the QGIS

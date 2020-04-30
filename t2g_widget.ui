@@ -11,13 +11,13 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
     <horstretch>0</horstretch>
     <verstretch>1</verstretch>
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Tachy2GIS</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
    <property name="spacing">
@@ -60,7 +60,7 @@
       <widget class="QComboBox" name="comboBox"/>
      </item>
      <item>
-      <widget class="QPushButton" name="deleteAllButton">
+      <widget class="QPushButton" name="deleteVertexButton">
        <property name="minimumSize">
         <size>
          <width>16</width>
@@ -119,19 +119,25 @@
         </size>
        </property>
        <property name="text">
-        <string>🔌</string>
+        <string>🔛</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QgsMapCanvas" name="mapView" native="true">
+    <widget class="QFrame" name="vtk_frame">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Plain</enum>
      </property>
     </widget>
    </item>
@@ -143,14 +149,7 @@
    <extends>QComboBox</extends>
    <header>qgsmaplayercombobox.h</header>
   </customwidget>
-  <customwidget>
-   <class>QgsMapCanvas</class>
-   <extends>QWidget</extends>
-   <header>qgis.gui</header>
-   <container>1</container>
-  </customwidget>
  </customwidgets>
- <resources>
- </resources>
+ <resources/>
  <connections/>
 </ui>
