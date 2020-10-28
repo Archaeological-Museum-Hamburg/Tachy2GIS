@@ -5,13 +5,18 @@
 #******************************************************************************
 import os.path
 import re
+import json
+import vtk
 
 from PyQt5 import Qt
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QMutex, QAbstractTableModel, Qt
 from PyQt5.QtWidgets import QApplication as qApp
 from qgis.core import *
 from qgis.gui import *
+from qgis.utils import iface
 from .shaping import add_shape
+from .visualization import VtkPolyLayer
+
 
 from . import GSI_Parser
 from .. import AnchorUpdateDialog
@@ -33,96 +38,15 @@ try:
 except ImportError:
     print('Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles')
     raise
+
+class T2G_Geometry:
+    vertices = []
+    id = None
+
 ## Updating anchor points that are used to enable snapping when manually adding 
 #  geometries is delegated to its own thread. This class is required to do that.
 #  The implementation is based on this example:
 #  https://stackoverflow.com/questions/6783194/background-thread-with-qthread-in-pyqt#6789205
-class AnchorUpdater(QObject):
-    # The thread uses signals to communicate its progress to the AnchorUpdateDialog
-    signalGeometriesProgress = pyqtSignal(int)
-    signalAnchorCount = pyqtSignal(int)
-    signalAnchorProgress = pyqtSignal(int)
-    signalFinished = pyqtSignal()
-    
-    ## Constructor
-    #  @param parent Not used
-    #  @param layer The vector layer which is to be scanned for vertices    
-    def __init__(self, parent = None, layer = None):
-        super(self.__class__, self).__init__(parent)
-        self.layer = layer
-        self.anchorPoints = []
-        self.anchorIndex = QgsSpatialIndex()
-        self.abort = False
-        self._mutex =QMutex()
-
-    ## A slot to receive the 'Abort' signal from the AnchorUpdateDialog.
-    @pyqtSlot()
-    def abortExtraction(self):
-        self._mutex.lock()
-        self.abort = True
-        self._mutex.unlock()
-
-    ## The main worker method
-    #  getting all features and making sure they have geometries that can be
-    #  exported to wkt. This solution with expection handling has been chosen
-    #  because checking 'geometry is None' leads to instant crashing (No
-    #  stack trace,no exception, no nothing).
-    #  The enumerator is required to update the progress bar
-    def startExtraction(self):
-        features = self.layer.getFeatures()
-        wkts = []
-        for i, feature in enumerate(features):
-            geometry = feature.geometry()
-            # This is ugly, I know, but as mentioned above, it works
-            try:
-                wkts.append(geometry.asWkt())
-            except:
-                pass
-            self.signalGeometriesProgress.emit(i)
-            # frequently forcing event processing is required to actually update
-            # the progress bars and to be able to receive the abort signal 
-            qApp.processEvents()
-            if self.abort: 
-                self.anchorPoints = []
-                self.anchorIndex = QgsSpatialIndex()
-                return
-        allVertices = []
-        
-        pointIndex = 0
-        self.signalAnchorCount.emit(len(wkts))
-        for i, wkt in enumerate(wkts):
-            # The feature wtk strings are broken into their vertices 
-            for vertext in wkt.split(','):
-                # a regex pulls out the numbers, of which the first three are mapped to float
-                dimensions = WKT_VALUES.findall(vertext)
-                if len(dimensions) >= 3:
-                    coordinates = tuple(map(float, dimensions[:3]))
-                    # this ensures that only distinct vertices are indexed
-                    if coordinates not in allVertices:
-                        allVertices.append(coordinates)
-                        # preparing a new wkt string representing the vertex as point
-                        coordText = WKT_STRIP.sub('', vertext)
-                        extension = WKT_EXTENSIONS[len(dimensions) - 2]
-                        anchorWkt = 'Point' + extension + '(' + coordText + ')'
-                        self.anchorPoints.append(anchorWkt)
-                        # creating and adding a new entry to the index. The id is
-                        # synchronized with the point list
-                        newAnchor = QgsFeature(pointIndex)
-                        pointIndex += 1
-                        #anchorPoint.fromWkt(anchorWkt)
-                        newAnchor.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(coordinates[0], coordinates[1])))
-                        self.anchorIndex.insertFeature(newAnchor)
-                        # Just checking if this worked:
-                        testWkt = newAnchor.geometry().asWkt()
-                        nn = self.anchorIndex.nearestNeighbor(QgsPointXY(coordinates[0], coordinates[1]), 1)
-                self.signalAnchorCount.emit(i + 1)
-                qApp.processEvents()
-                if self.abort: 
-                    self.anchorPoints = []
-                    self.anchorIndex = QgsSpatialIndex()
-                    return
-        self.signalFinished.emit()
-        
 
 ## This class handles individual vertices for data acquisition and visualization
 #
@@ -131,13 +55,7 @@ class T2G_Vertex():
     SOURCE_INTERNAL = 'Man.'
     ## String constant to identify automatically generated vertices
     SOURCE_EXTERNAL = 'Ext.'
-    ## Manually generated vertices get a 'box' icon
-    SHAPE_INTERNAL = QgsVertexMarker.ICON_BOX
-    ## Vertices from an external source get an 'X'
-    SHAPE_EXTERNAL =QgsVertexMarker.ICON_X
-    ## Mapping source keywords to the corresponding shapes.
-    SHAPE_MAP = {SOURCE_INTERNAL: SHAPE_INTERNAL,
-                 SOURCE_EXTERNAL: SHAPE_EXTERNAL}
+
     ## Headers for displaying vertices in a tableView
     HEADERS = ['#', 'Source', 'x', 'y', 'z']
     
@@ -148,16 +66,12 @@ class T2G_Vertex():
     #  @param x,y,z Vertex coordinates
     #  @param wkt allows to pass a wkt string containing coordinates to the ctor.
     #             If at the same time x, y and z are passed, their values will be overwritten
-    def __init__(self, label=None, source=None, x=None, y=None, z=0, wkt=""):
+    def __init__(self, label=None, source=None, x=None, y=None, z=0):
         self.label = str(label)
         self.source = source
         self.x = x
         self.y = y
         self.z = z
-        self.wkt = wkt
-        self.wktDimensions = 0
-        if not wkt == "":
-            self.setWkt(wkt)
 
     ## list of fields used to feed a table model
     #  @return a list containing string for label an source and floats for x, y, z
@@ -173,40 +87,17 @@ class T2G_Vertex():
     #  @param xyz a list or tuple of coordinates
     def setXyz(self, xyz):
         self.x, self.y, self.z = xyz
-    
-    ## Sets the vertex' coordinates from Well Known Text
-    #  @param wkt A string containing at least two numbers
-    def setWkt(self, wkt):
-        self.wkt = wkt
-        # a regex extracts all numbers from the wkt
-        dimensions = WKT_VALUES.findall(wkt)
-        # x and y are assumed to be present
-        self.x, self.y = list(map(float, dimensions[:2]))
-        self.wktDimensions = len(dimensions)
-        # if there are at least three dimensions, z is extracted as well
-        if self.wktDimensions >= 3:
-            self.z = float(dimensions[2])
-        else:
-            self.z = 0
-    
-    ## Gives you a marker to draw on the map canvas. The shape depends on the
-    #  source of the vertex, to help distinguishing between manually created
-    #  vertices and external ones
-    #  @return a QgsVertexMarker
-    def getMarker(self, canvas):
-        marker = QgsVertexMarker(canvas)
-        marker.setCenter(self.getQgsPointXY())
-        marker.setIconType(self.SHAPE_MAP[self.source])
-        return marker
+
     
     ## Returns the points' coordinates as a tuple. The tuple's length corresponds
     #  to the actually populated dimensions to avoid upsetting the shapefile export.
     #  @return a tuple of float that may contain two or three items
-    def getCoords(self):
-        if self.wktDimensions == 2:
-            return (self.x, self.y)
-        else:
-            return (self.x, self.y, self.z)
+    def get_coordinates(self):
+        return (self.x, self.y, self.z)
+
+    def get_wkt(self):
+        string_coords = map(str, self.get_coordinates())
+        return ' '.join(string_coords)
 
     @staticmethod
     def fromGSI(line):
@@ -236,6 +127,7 @@ class T2G_VertexList(QAbstractTableModel):
     ### Selected vertices get a different color
     SELECTED_COLOR = Qt.green
     signal_feature_dumped = pyqtSignal()
+    signal_anchors_updated = pyqtSignal()
     
     ## Ctor
     #  @param vertices the vertex list can be initialized with a list of vertices
@@ -248,7 +140,6 @@ class T2G_VertexList(QAbstractTableModel):
         self.colors = []
         self.shapes = []
         self.anchorPoints = []
-        self.anchorIndex = QgsSpatialIndex()
         self.selected = None
         self.maxIndex = None
         self.updateThread = QThread()
@@ -297,34 +188,34 @@ class T2G_VertexList(QAbstractTableModel):
         #  (self.anchorPoints in this case).
         #  self.anchorPoints holds wkt representation of all vertices that can be 
         #  passed to the ctor of a new T2G_Vertex. 
-        self.anchorIndex = QgsSpatialIndex()
-        self.anchorPoints = []
+
         if layer is None:
             # empty or nonexisting layers leave us with an empty point list and index.
             return
         self.layer = layer
         # Initializing the progress dialog
-        aud = AnchorUpdateDialog.AnchorUpdateDialog()
-        aud.abortButton.clicked.connect(self.abortUpdate)
-        aud.geometriesBar.setMaximum(layer.featureCount())
-        aud.geometriesBar.setValue(0)
-        aud.anchorBar.setValue(0)
+        self.vtk_layer = VtkPolyLayer(self.layer)
+        anchor_update_dialog = AnchorUpdateDialog.AnchorUpdateDialog()
+        anchor_update_dialog.abortButton.clicked.connect(self.abortUpdate)
+        anchor_update_dialog.geometriesBar.setMaximum(layer.featureCount())
+        anchor_update_dialog.geometriesBar.setValue(0)
+        anchor_update_dialog.anchorBar.setValue(0)
         # the layer is passed to the anchorUpdater and the updater is moved to
         # a new thread
-        self.anchorUpdater = AnchorUpdater(layer=layer)
+        self.anchorUpdater = self.vtk_layer.extractor
         self.anchorUpdater.moveToThread(self.updateThread)
+
         self.updateThread.start()
-        self.anchorUpdater.signalAnchorCount.connect(aud.setAnchorCount)
-        self.anchorUpdater.signalAnchorProgress.connect(aud.anchorProgress)
-        self.anchorUpdater.signalGeometriesProgress.connect(aud.geometriesProgress)
         # the dialog is displayed and extraction is started
-        aud.show()
-        self.anchorUpdater.startExtraction()
+        self.vtk_layer.update(anchor_update_dialog)
         # the abort method of the updater clears its index and points list, so
         # we can just use them, even if we aborted. They will be empty in that 
         # case. 
         self.anchorIndex = self.anchorUpdater.anchorIndex
-        self.anchorPoints = self.anchorUpdater.anchorPoints
+        self.anchorPoints = self.vtk_layer.anchors
+        self.geometries = self.vtk_layer.geometries
+        print(len(self.geometries))
+        self.signal_anchors_updated.emit()
         
     ## checks if there are anchors
     #  @return bool 
@@ -403,7 +294,7 @@ class T2G_VertexList(QAbstractTableModel):
     #  shapefile.writer
     #  @return a double nested list of coordinates. 
     def getParts(self):
-        return [[v.getCoords() for v in self.vertices]]
+        return [[v.get_coordinates() for v in self.vertices]]
 
     ## Turns the vertices into geometry and writes them to a shapefile
     #  @param targetLayer a vectordatalayer that is suspected to be based on a
@@ -420,6 +311,16 @@ class T2G_VertexList(QAbstractTableModel):
         targetFileName = os.path.splitext(dataUri.split('|')[0])[0]
         add_shape(targetFileName, self.getParts(), fieldData)
         self.signal_feature_dumped.emit()
+
+    def add_to_layer(self, target_layer, fieldData):
+        capabilities = target_layer.dataProvider().capabilities()
+        # capabilities are a binary representation of flags.
+        # So to check for them, we have to perform a binary
+        # compare:
+        if not (capabilities & QgsVectorDataProvider.AddFeatures):
+            return
+        self.vtk_layer.add_feature(self.vertices, iface)
+
 
     def get_qgs_points(self):
         return [vertex.getQgsPointXY() for vertex in self.vertices]

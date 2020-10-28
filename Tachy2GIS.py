@@ -33,6 +33,7 @@ try:
 except ConnectionRefusedError:
     pass
 """
+import os
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
@@ -52,6 +53,27 @@ from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
+
+
+def make_axes_actor(scale, xyzLabels):
+    axes = vtk.vtkAxesActor()
+    axes.SetScale(scale[0], scale[1], scale[2])
+    axes.SetShaftTypeToCylinder()
+    axes.SetXAxisLabelText(xyzLabels[0])
+    axes.SetYAxisLabelText(xyzLabels[1])
+    axes.SetZAxisLabelText(xyzLabels[2])
+    axes.SetCylinderRadius(0.5 * axes.GetCylinderRadius())
+    axes.SetConeRadius(1.025 * axes.GetConeRadius())
+    axes.SetSphereRadius(1.5 * axes.GetSphereRadius())
+    tprop = axes.GetXAxisCaptionActor2D().GetCaptionTextProperty()
+    tprop.ItalicOn()
+    tprop.ShadowOn()
+    tprop.SetFontFamilyToTimes()
+    # Use the same text properties on the other two axes.
+    axes.GetYAxisCaptionActor2D().GetCaptionTextProperty().ShallowCopy(tprop)
+    axes.GetZAxisCaptionActor2D().GetCaptionTextProperty().ShallowCopy(tprop)
+    return axes
+
 
 
 class Tachy2Gis:
@@ -193,26 +215,28 @@ class Tachy2Gis:
         self.renderer = vtk.vtkRenderer()
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
         #self.vtk_widget.resizeEvent().connect(self.renderer.resize)
-        self.ton()
+        self.vertexList.signal_anchors_updated.connect(self.update_renderer)
 
-    def ton(self):
-        cylinder = vtk.vtkCylinderSource()
-        cylinder.SetResolution(8)
-
+    def update_renderer(self):
+        poly_data = self.vertexList.anchorUpdater.poly_data
         # The mapper is responsible for pushing the geometry into the graphics
         # library. It may also do color mapping, if scalars or other
         # attributes are defined.
-        cylinderMapper = vtk.vtkPolyDataMapper()
-        cylinderMapper.SetInputConnection(cylinder.GetOutputPort())
+        poly_mapper = vtk.vtkPolyDataMapper()
+        tri_filter = vtk.vtkTriangleFilter()
+        tri_filter.SetInputData(poly_data)
+        tri_filter.Update()
+        poly_mapper.SetInputData(tri_filter.GetOutput())
 
         # The actor is a grouping mechanism: besides the geometry (mapper), it
         # also has a property, transformation matrix, and/or texture map.
         # Here we set its color and rotate it -22.5 degrees.
-        cylinderActor = vtk.vtkActor()
-        cylinderActor.SetMapper(cylinderMapper)
-        cylinderActor.GetProperty().SetColor(tomato)
-        cylinderActor.RotateX(30.0)
-        cylinderActor.RotateY(-45.0)
+        actor = vtk.vtkActor()
+        actor.SetMapper(poly_mapper)
+        actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Orange"))
+
+        actor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Red"))
+        actor.GetProperty().EdgeVisibilityOn()
 
         # Create the graphics structure. The renderer renders into the render
         # window. The render window interactor captures mouse events and will
@@ -224,9 +248,8 @@ class Tachy2Gis:
         iren.SetRenderWindow(renWin)
 
         # Add the actors to the renderer, set the background and size
-        ren.AddActor(cylinderActor)
-        ren.SetBackground(0.1, 0.2, 0.4)
-        #renWin.SetSize(200, 200)
+        ren.AddActor(actor)
+        ren.SetBackground(vtk.vtkNamedColors().GetColor3d("light_grey"))
 
         # This allows the interactor to initalize itself. It has to be
         # called before an event loop.
@@ -235,7 +258,7 @@ class Tachy2Gis:
         # We'll zoom in a little by accessing the camera and invoking a "Zoom"
         # method on it.
         ren.ResetCamera()
-        ren.GetActiveCamera().Zoom(1.5)
+        #ren.GetActiveCamera().Zoom(1.5)
         renWin.Render()
 
     ## Constructor

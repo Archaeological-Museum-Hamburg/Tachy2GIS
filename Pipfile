@@ -7,6 +7,6 @@ verify_ssl = true
 pydevd = "*"
 
 [packages]
-pyshp = "~=2.1"
+pyshp = "==2.1"
 pyqt5 = "*"
 vtk = "*"

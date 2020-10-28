@@ -91,6 +91,8 @@ class FieldDialog(Ui_Targetselection):
     def populateFieldTable(self): 
         if self.layer is None:
             return
+        else:
+            return
         dataUri = self.layer.dataProvider().dataSourceUri()
         shapefileName = os.path.splitext(dataUri.split('|')[0])[0]
         sf = shapefile.Reader(shapefileName)
