@@ -7,7 +7,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Tachy2GIS
+name=Tachy2GIS-3DViewer
 qgisMinimumVersion=3.0
 description=This plugin allows to create geometries directly with a connected tachymeter
 version=0.1

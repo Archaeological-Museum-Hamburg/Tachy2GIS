@@ -34,6 +34,7 @@ except ConnectionRefusedError:
     pass
 """
 import os
+import gc  # TODO: Garbage collect?
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
@@ -43,8 +44,9 @@ from qgis.core import QgsMapLayerProxyModel
 from qgis.gui import QgsMapToolPan
 
 import vtk
-from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from vtk.util.colors import tomato
+import vtkmodules
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtkmodules.util.colors import tomato
 
 from .T2G.VertexList import T2G_VertexList, T2G_Vertex
 from .T2G.TachyReader import TachyReader, AvailabilityWatchdog
@@ -119,6 +121,32 @@ class Tachy2Gis:
             self.previousTool = QgsMapToolPan(self.iface.mapCanvas())
         self.iface.mapCanvas().setMapTool(self.previousTool)
 
+    # Disconnect Signals and stop QThreads
+    def onCloseCleanup(self):
+        self.dlg.tachy_connect_button.clicked.disconnect(self.tachyReader.hook_up)
+        # self.dlg.request_mirror.clicked.disconnect(self.tachyReader.request_mirror_z)  # TODO: delete or future additions?
+        # self.dlg.logFileButton.clicked.disconnect(self.setLog)
+        # self.dlg.deleteAllButton.clicked.disconnect(self.clearCanvas)
+        self.dlg.finished.disconnect(self.mapTool.clear)
+        self.dlg.dumpButton.clicked.disconnect(self.dump)
+        self.dlg.deleteVertexButton.clicked.disconnect(self.mapTool.deleteVertex)
+        self.dlg.finished.disconnect(self.restoreTool)
+        self.dlg.accepted.disconnect(self.restoreTool)
+        self.dlg.rejected.disconnect(self.restoreTool)
+        self.dlg.rejected.disconnect(self.onCloseCleanup)
+        self.dlg.sourceLayerComboBox.layerChanged.disconnect(self.setActiveLayer)
+        self.dlg.sourceLayerComboBox.layerChanged.disconnect(self.mapTool.clear)
+        self.fieldDialog.targetLayerComboBox.layerChanged.disconnect(self.targetChanged)
+        # self.vertexList.layoutChanged.disconnect(self.dumpEnabled)
+        self.fieldDialog.buttonBox.accepted.disconnect(self.extent_provider.add_feature)
+        self.dlg.zoomResetButton.clicked.disconnect(self.extent_provider.reset)
+        # self.dlg.rejected.disconnect(self.onCloseCleanup)  # error?
+        self.availability_watchdog.serial_available.disconnect(self.dlg.tachy_connect_button.setText)
+        self.availability_watchdog.shutDown()
+        self.tachyReader.shutDown()
+        gc.collect()
+        print("Signals disconnected!")
+
     def setActiveLayer(self):
         if Qt is None:
             return
@@ -182,6 +210,7 @@ class Tachy2Gis:
         self.dlg.finished.connect(self.restoreTool)
         self.dlg.accepted.connect(self.restoreTool)
         self.dlg.rejected.connect(self.restoreTool)
+        self.dlg.rejected.connect(self.onCloseCleanup)
 
         self.dlg.sourceLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
@@ -214,11 +243,13 @@ class Tachy2Gis:
 
         self.renderer = vtk.vtkRenderer()
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
-        #self.vtk_widget.resizeEvent().connect(self.renderer.resize)
+        # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         self.vertexList.signal_anchors_updated.connect(self.update_renderer)
 
+    # TODO: PointClouds, vtk.vtkLineSource, vtk.vtkPoints visualization
     def update_renderer(self):
         poly_data = self.vertexList.anchorUpdater.poly_data
+        #clip_data = self.vertexList.anchorUpdater.clip_data  # TODO: Implement
         # The mapper is responsible for pushing the geometry into the graphics
         # library. It may also do color mapping, if scalars or other
         # attributes are defined.
@@ -226,6 +257,35 @@ class Tachy2Gis:
         tri_filter = vtk.vtkTriangleFilter()
         tri_filter.SetInputData(poly_data)
         tri_filter.Update()
+
+        # # vtkClipPolyData
+        # clip_filter = vtk.vtkClipPolyData()
+        # clip_filter.SetInputConnection(poly_data.GetOutputPort())
+        # clip_filter.SetClipFunction(clip_data)
+        # clip_filter.InsideOutOn()
+        # clipMapper = vtk.vtkPolyDataMapper()
+        # clipMapper.SetInputConnection(clip_filter.GetOutputPort())
+        # clipActor = vtk.Actor()
+        # clipActor.SetMapper(clipMapper)
+
+        # use vtkFeatureEdges for Boundary rendering TODO: make TriangleFilter EdgeVisibilityOn/Off() optional in GUI?
+        featureEdges = vtk.vtkFeatureEdges()
+        featureEdges.SetColoring(0)
+        featureEdges.BoundaryEdgesOn()
+        featureEdges.FeatureEdgesOff()
+        featureEdges.ManifoldEdgesOff()
+        featureEdges.NonManifoldEdgesOff()
+        featureEdges.SetInputData(poly_data)
+        featureEdges.Update()
+
+        edgeMapper = vtk.vtkPolyDataMapper()
+        edgeMapper.SetInputConnection(featureEdges.GetOutputPort())
+        edgeActor = vtk.vtkActor()
+        edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI
+        edgeActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
+        # edgeActor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Black"))
+        edgeActor.SetMapper(edgeMapper)
+
         poly_mapper.SetInputData(tri_filter.GetOutput())
 
         # The actor is a grouping mechanism: besides the geometry (mapper), it
@@ -249,6 +309,8 @@ class Tachy2Gis:
 
         # Add the actors to the renderer, set the background and size
         ren.AddActor(actor)
+        # ren.AddActor(clipActor) TODO: Implement
+        ren.AddActor(edgeActor)
         ren.SetBackground(vtk.vtkNamedColors().GetColor3d("light_grey"))
 
         # This allows the interactor to initalize itself. It has to be
@@ -287,8 +349,9 @@ class Tachy2Gis:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr('&Tachy2GIS')
-        self.toolbar = self.iface.addToolBar('Tachy2Gis')
-        self.toolbar.setObjectName('Tachy2Gis')
+        # remove empty toolbar
+        # self.toolbar = self.iface.addToolBar('Tachy2Gis')
+        # self.toolbar.setObjectName('Tachy2Gis')
         
         # From here: Own additions
         self.vertexList = T2G_VertexList()
@@ -373,8 +436,8 @@ class Tachy2Gis:
         """
 
         # Create the dialog (after translation) and keep reference
-        self.dlg = Tachy2GisDialog()
-        self.setupControls()
+        # self.dlg = Tachy2GisDialog()
+        # self.setupControls()
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
@@ -421,6 +484,12 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
+        # # Create the dialog (after translation) and keep reference
+        # TODO:'QPushButton has been deleted' ErrorLoop, fixed by stopping QThreads
+        self.dlg = Tachy2GisDialog()
+        self.setupControls()
+        self.availability_watchdog.start()  # TODO: QPushButton has been deleted Error on reopen
+        self.tachyReader.start()
         # Store the active map tool and switch to the T2G_VertexPickerTool
         self.previousTool = self.iface.mapCanvas().mapTool()
         self.iface.mapCanvas().setMapTool(self.mapTool)
@@ -432,7 +501,7 @@ class Tachy2Gis:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-            
+
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass

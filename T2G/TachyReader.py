@@ -19,6 +19,7 @@ SERIAL_AVAILABLE = '🔌'      # Emoji 'electric plug', maybe cannot be displaye
 NO_SERIAL_AVAILABLE = '⚠️'
 
 
+# TODO: Error when T2G is closed and opened again - No Error with class TachyReader
 class AvailabilityWatchdog(QThread):
     serial_available = pyqtSignal(str)
 
@@ -32,10 +33,16 @@ class AvailabilityWatchdog(QThread):
         self.pollingTimer.start(2131)
 
     def poll(self):
-        if QSerialPortInfo.availablePorts():
-            self.serial_available.emit(SERIAL_AVAILABLE)
-        else:
-            self.serial_available.emit(NO_SERIAL_AVAILABLE)
+        # TODO: better way to find the right COM Port
+        comManList = [i.manufacturer() for i in QSerialPortInfo.availablePorts()]
+        if QSerialPortInfo.availablePorts():  # TODO: Passes if any COM Port is available
+            if 'Prolific' in comManList:
+                self.serial_available.emit(SERIAL_AVAILABLE)
+            else:
+                self.serial_available.emit(NO_SERIAL_AVAILABLE)
+
+    def shutDown(self):
+        self.pollingTimer.stop()
 
 
 class TachyReader(QThread):

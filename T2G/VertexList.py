@@ -133,7 +133,7 @@ class T2G_VertexList(QAbstractTableModel):
     #  @param vertices the vertex list can be initialized with a list of vertices
     #  @param parent included to match the ctor of QAbstractTableModel
     #  @param args see above
-    def __init__(self, vertices = [], parent = None, *args):
+    def __init__(self, vertices=[], parent=None, *args):
         QAbstractTableModel.__init__(self, parent, *args)
         self.columnCount = len(T2G_Vertex().fields())
         self.vertices = vertices
