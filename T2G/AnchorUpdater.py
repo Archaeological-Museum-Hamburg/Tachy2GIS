@@ -2,7 +2,7 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QMutex, QAbstra
 from qgis.core import *
 from PyQt5.QtWidgets import qApp
 import vtk
-
+import json
 
 class AnchorUpdater(QObject):
     # The thread uses signals to communicate its progress to the AnchorUpdateDialog
@@ -88,6 +88,17 @@ class AnchorUpdater(QObject):
                     return
         self.signalFinished.emit()
 
+def unpack_multi_polygons(geometries):
+    unpacked = []
+    for geo in geometries:
+        if geo.asWkt().startswith('MultiPolygonZ'):
+            coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
+            unpacked += coordinates[0]
+        else:
+            unpacked.append(list(geo.vertices()))
+    return unpacked
+
+
 
 class VtkAnchorUpdater(AnchorUpdater):
     layer_cache = {}
@@ -96,26 +107,22 @@ class VtkAnchorUpdater(AnchorUpdater):
 
     def startExtraction(self):
         geometries = list([feature.geometry() for feature in self.layer.getFeatures()])
-        print('Geos:', geometries)
         self.signalAnchorCount.emit(len(geometries))
         active_layer_id = self.layer.id()
         if active_layer_id not in self.layer_cache.keys():
             qApp.processEvents()
-            print('Not cached')
             polies = vtk.vtkCellArray()
             anchors = vtk.vtkPoints()
             anchors.SetDataTypeToDouble()
             point_index = 0
-            print(len(geometries))
-            print('Huh?')
+            geometries = unpack_multi_polygons(geometries)
             for geometry in geometries:
                 poly = vtk.vtkPolygon()
-                vertices = list(geometry.vertices())
-                for vertex in vertices[:-1]:
-                    print('Have vertices')
+                for vertex in geometry[:-1]:
+                    vertex = vertex[:3]
                     poly.GetPointIds().InsertNextId(point_index)
                     point_index += 1
-                    anchors.InsertNextPoint(vertex.x(), vertex.y(), vertex.z())
+                    anchors.InsertNextPoint(*vertex)
                     self.signalAnchorCount.emit(point_index)
                     qApp.processEvents()
                     if self.abort:
