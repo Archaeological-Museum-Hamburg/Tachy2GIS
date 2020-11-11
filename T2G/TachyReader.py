@@ -76,6 +76,9 @@ class TachyReader(QThread):
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
+            # TODO: when a point is measured, two lines are passed - the second is b'w\r\n' which leads to an error
+            if line_string.startswith('w'):
+                return
             if line_string.startswith(GEOCOM_RESPONSE_IDENTIFIER):
                 QgsMessageLog.logMessage("Received GeoCOM Message: " + line_string)
                 request, reply = self.queue.handle_reply(line_string)

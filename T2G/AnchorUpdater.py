@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import qApp
 import vtk
 import json
 
+
 class AnchorUpdater(QObject):
     # The thread uses signals to communicate its progress to the AnchorUpdateDialog
     signalGeometriesProgress = pyqtSignal(int)

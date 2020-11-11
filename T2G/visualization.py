@@ -33,6 +33,7 @@ class ColourProvider:
 
 class VtkGeometry:
     POLYGON = 1006
+    MULTIPOLYGONZM = 3006
 
 
 class VtkLayer:

@@ -77,9 +77,7 @@ def make_axes_actor(scale, xyzLabels):
     return axes
 
 
-
 class Tachy2Gis:
-    
     """QGIS Plugin Implementation."""
     # Custom methods go here:
 
@@ -140,6 +138,7 @@ class Tachy2Gis:
         # self.vertexList.layoutChanged.disconnect(self.dumpEnabled)
         self.fieldDialog.buttonBox.accepted.disconnect(self.extent_provider.add_feature)
         self.dlg.zoomResetButton.clicked.disconnect(self.extent_provider.reset)
+        self.dlg.zoomResetButton.clicked.disconnect(self.resetVtkCamera)
         # self.dlg.rejected.disconnect(self.onCloseCleanup)  # error?
         self.availability_watchdog.serial_available.disconnect(self.dlg.tachy_connect_button.setText)
         self.availability_watchdog.shutDown()
@@ -188,6 +187,10 @@ class Tachy2Gis:
     def set_tachy_button_text(self, txt):
         self.dlg.tachy_connect_button.text = txt
 
+    def resetVtkCamera(self):
+        self.renderer.ResetCamera()
+        self.renderer.GetRenderWindow().Render()
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
@@ -221,6 +224,7 @@ class Tachy2Gis:
         # self.vertexList.layoutChanged.connect(self.dumpEnabled)
         self.fieldDialog.buttonBox.accepted.connect(self.extent_provider.add_feature)
         self.dlg.zoomResetButton.clicked.connect(self.extent_provider.reset)
+        self.dlg.zoomResetButton.clicked.connect(self.resetVtkCamera)
 
         self.dlg.zoomModeComboBox.addItems(['Layer',
                                             'Last feature',
@@ -233,23 +237,20 @@ class Tachy2Gis:
         self.extent_provider.ready.connect(self.auto_zoomer.apply)
         self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
 
-        self.render_container_layout = QVBoxLayout()
-        self.vtk_widget = QVTKRenderWindowInteractor(self.dlg.vtk_frame)
         self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.render_container_layout.addWidget(self.vtk_widget)
         self.dlg.vtk_frame.setLayout(self.render_container_layout)
+        self.vtk_widget.SetInteractorStyle(VtkMouseInteractorStyle())
         self.vtk_widget.Initialize()
         self.vtk_widget.Start()
 
-        self.renderer = vtk.vtkRenderer()
         self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         self.vertexList.signal_anchors_updated.connect(self.update_renderer)
 
-    # TODO: PointClouds, vtk.vtkLineSource, vtk.vtkPoints visualization
+    # TODO: PointClouds, vtk.vtkLineSource/vtkPolyLine, vtk.vtkPoints visualization
     def update_renderer(self):
         poly_data = self.vertexList.anchorUpdater.poly_data
-        #clip_data = self.vertexList.anchorUpdater.clip_data  # TODO: Implement
         # The mapper is responsible for pushing the geometry into the graphics
         # library. It may also do color mapping, if scalars or other
         # attributes are defined.
@@ -257,16 +258,6 @@ class Tachy2Gis:
         tri_filter = vtk.vtkTriangleFilter()
         tri_filter.SetInputData(poly_data)
         tri_filter.Update()
-
-        # # vtkClipPolyData
-        # clip_filter = vtk.vtkClipPolyData()
-        # clip_filter.SetInputConnection(poly_data.GetOutputPort())
-        # clip_filter.SetClipFunction(clip_data)
-        # clip_filter.InsideOutOn()
-        # clipMapper = vtk.vtkPolyDataMapper()
-        # clipMapper.SetInputConnection(clip_filter.GetOutputPort())
-        # clipActor = vtk.Actor()
-        # clipActor.SetMapper(clipMapper)
 
         # use vtkFeatureEdges for Boundary rendering TODO: make TriangleFilter EdgeVisibilityOn/Off() optional in GUI?
         featureEdges = vtk.vtkFeatureEdges()
@@ -309,7 +300,6 @@ class Tachy2Gis:
 
         # Add the actors to the renderer, set the background and size
         ren.AddActor(actor)
-        # ren.AddActor(clipActor) TODO: Implement
         ren.AddActor(edgeActor)
         ren.SetBackground(vtk.vtkNamedColors().GetColor3d("light_grey"))
 
@@ -330,6 +320,10 @@ class Tachy2Gis:
     def __init__(self, iface):
         # Save reference to the QGIS interface
         self.iface = iface
+        self.dlg = Tachy2GisDialog()
+        self.renderer = vtk.vtkRenderer()
+        self.render_container_layout = QVBoxLayout()
+        self.vtk_widget = QVTKRenderWindowInteractor(self.dlg.vtk_frame)
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
@@ -485,10 +479,12 @@ class Tachy2Gis:
     def run(self):
         """Run method that performs all the real work"""
         # # Create the dialog (after translation) and keep reference
-        # TODO:'QPushButton has been deleted' ErrorLoop, fixed by stopping QThreads
         self.dlg = Tachy2GisDialog()
+        self.renderer = vtk.vtkRenderer()
+        self.render_container_layout = QVBoxLayout()
+        self.vtk_widget = QVTKRenderWindowInteractor(self.dlg.vtk_frame)
         self.setupControls()
-        self.availability_watchdog.start()  # TODO: QPushButton has been deleted Error on reopen
+        self.availability_watchdog.start()
         self.tachyReader.start()
         # Store the active map tool and switch to the T2G_VertexPickerTool
         self.previousTool = self.iface.mapCanvas().mapTool()
@@ -505,3 +501,84 @@ class Tachy2Gis:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+
+# TODO: Replace glyphs with points for visualization
+#       Change point color for latest selection
+#       Snapping visualization
+class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
+    # Creates a glyph on a selected point and returns point coordinates as a tuple
+    def OnRightButtonDown(self):
+        clickPos = self.GetInteractor().GetEventPosition()
+        print("Click pos: ", clickPos)
+        # vtkPointPicker
+        picker = vtk.vtkPointPicker()
+        # TODO: Set tolerance in GUI
+        picker.SetTolerance(1000)
+        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())  # vtkPointPicker
+        picked = picker.GetPickPosition()  # vtkPointPicker
+        print("vtkPointPicker picked: ", picked)
+
+        picked_point = vtk.vtkPoints()
+        picked_point.InsertNextPoint(*picked)
+
+        addSphere = vtk.vtkPolyData()
+        addSphere.SetPoints(picked_point)
+
+        sphereSource = vtk.vtkSphereSource()
+        sphereSource.SetRadius(1000)
+        sphereSource.SetThetaResolution(60)
+        sphereSource.SetPhiResolution(60)
+        sphereSource.SetRadius(1000)
+        glyph3D = vtk.vtkGlyph3D()
+        glyph3D.SetSourceConnection(sphereSource.GetOutputPort())
+        glyph3D.SetInputData(addSphere)
+        glyph3D.Update()
+
+        glyph3Dmapper = vtk.vtkPolyDataMapper()
+        glyph3Dmapper.SetInputConnection(glyph3D.GetOutputPort())
+        glyph3Dmapper.SetInputData(glyph3D.GetOutput())
+        glyph3Dactor = vtk.vtkActor()
+        glyph3Dactor.SetMapper(glyph3Dmapper)
+        # TODO: Set properties?
+        glyph3Dactor.GetProperty().SetColor(1.0, 0.2, 0.2)
+        glyph3Dactor.PickableOff()
+
+        # TODO: remove spheres on dump? reopening t2g removes spheres
+        #       spheres can't be removed from selection
+        #       GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
+        self.GetCurrentRenderer().AddActor(glyph3Dactor)
+        self.GetCurrentRenderer().GetRenderWindow().Render()
+
+        return picked
+
+        # vtkCellPicker test
+        # picker = vtk.vtkCellPicker()
+        # picker.SetTolerance(10000)
+        # picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
+        # picked = picker.GetCellId()
+        # print("vtkCellPicker picked: ", picked)
+
+        # vtkPropPicker test
+        # picker = vtk.vtkPropPicker()
+        # picker.PickProp(clickPos[0], clickPos[1], self.GetCurrentRenderer())
+        # picked = picker.GetViewProp()
+        # print("Picked: ", picked)
+
+    def OnRightButtonUp(self):
+        pass
+
+    def __init__(self, parent=None):
+        self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
+        # self.AddObserver("LeftButtonReleaseEvent", self.left_button_release_event)
+
+    def right_button_press_event(self, obj, event):
+        print("Right Button pressed")
+        self.OnRightButtonDown()
+        return
+
+    def right_button_release_event(self, obj, event):
+        print("Right Button released")
+        self.OnRightButtonUp()
+        return
+
