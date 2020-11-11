@@ -14,7 +14,6 @@ from PyQt5.QtWidgets import QApplication as qApp
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import iface
-from .shaping import add_shape
 from .visualization import VtkPolyLayer
 
 
@@ -32,12 +31,6 @@ WKT_REMOVE_MEASURE = re.compile(r" \d+(?=[,)])")
 
 ## List of wkt extensions used to indicate the available dimensions
 WKT_EXTENSIONS = [' ', 'Z ', 'ZM ']
-
-try:
-    import shapefile
-except ImportError:
-    print('Please install pyshp from https://pypi.python.org/pypi/pyshp/ to handle shapefiles')
-    raise
 
 class T2G_Geometry:
     vertices = []

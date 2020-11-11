@@ -27,7 +27,6 @@ from PyQt5.QtCore import *
 import os
 from PyQt5.Qt import QMessageBox
 from dateutil import parser as dateTimeParser
-import shapefile
 
 
 class FieldDialog(Ui_Targetselection):
