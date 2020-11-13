@@ -104,6 +104,7 @@ def unpack_multi_polygons(geometries):
     return unpacked
 
 
+# TODO: Polygon holes get rendered as polygon
 class VtkAnchorUpdater(AnchorUpdater):
     layer_cache = {}
     poly_data = None

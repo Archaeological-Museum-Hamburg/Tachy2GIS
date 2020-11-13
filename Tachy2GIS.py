@@ -506,11 +506,8 @@ class Tachy2Gis:
             pass
 
 
-# TODO: Replace glyphs with points for visualization
-#       Change point color for latest selection
-#       Snapping visualization
+# TODO: Snapping visualization
 #       show coordinates in widget 'coords' OnMouseMove
-#       draw lines between points
 class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def __init__(self, parent=None):
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
@@ -521,10 +518,11 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.lastPickedActor = None
         self.lastPickedProperty = vtk.vtkProperty()
 
-    # Creates a glyph on a selected point and returns point coordinates as a tuple
+    # Creates a vtkPoints with RenderAsSpheresOn on a selected point and returns point coordinates as a tuple
     def OnRightButtonDown(self):
         if self.lastPickedActor:
             self.lastPickedActor.GetProperty().SetColor(self.default_color)
+            # print(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
 
         clickPos = self.GetInteractor().GetEventPosition()
         print("Click pos: ", clickPos)
@@ -555,8 +553,32 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         pointActor.GetProperty().RenderPointsAsSpheresOn()
         pointActor.PickableOff()
 
+        # draw lines between points
+        if self.lastPickedActor:
+            picked_point.InsertNextPoint(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
+
+            polyLine = vtk.vtkPolyLine()
+            polyLine.GetPointIds().SetNumberOfIds(2)
+            for i in range(0, 2):
+                polyLine.GetPointIds().SetId(i, i)
+            cells = vtk.vtkCellArray()
+            cells.InsertNextCell(polyLine)
+
+            polyData = vtk.vtkPolyData()
+            polyData.SetPoints(picked_point)
+            polyData.SetLines(cells)
+
+            lineMapper = vtk.vtkPolyDataMapper()
+            lineMapper.SetInputData(polyData)
+            lineActor = vtk.vtkActor()
+            lineActor.SetMapper(lineMapper)
+            lineActor.PickableOff()
+            lineActor.GetProperty().SetColor(1.0, 0.0, 0.0)
+            lineActor.GetProperty().SetLineWidth(3)
+            self.GetCurrentRenderer().AddActor(lineActor)
+
         # TODO: remove points on dump? reopening t2g removes points
-        #       spheres can't be removed from selection
+        #       points can't be removed from selection
         #       GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
         self.GetCurrentRenderer().AddActor(pointActor)
         self.GetCurrentRenderer().GetRenderWindow().Render()
