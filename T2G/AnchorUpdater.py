@@ -89,16 +89,19 @@ class AnchorUpdater(QObject):
                     return
         self.signalFinished.emit()
 
+
 def unpack_multi_polygons(geometries):
     unpacked = []
     for geo in geometries:
         if geo.asWkt().startswith('MultiPolygonZ'):
             coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
             unpacked += coordinates[0]
+            if len(coordinates) > 1:
+                for i in range(len(coordinates)):
+                    unpacked += coordinates[i]
         else:
             unpacked.append(list(geo.vertices()))
     return unpacked
-
 
 
 class VtkAnchorUpdater(AnchorUpdater):

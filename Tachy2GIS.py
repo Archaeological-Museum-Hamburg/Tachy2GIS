@@ -122,8 +122,8 @@ class Tachy2Gis:
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
         self.dlg.tachy_connect_button.clicked.disconnect(self.tachyReader.hook_up)
-        # self.dlg.request_mirror.clicked.disconnect(self.tachyReader.request_mirror_z)  # TODO: delete or future additions?
-        # self.dlg.logFileButton.clicked.disconnect(self.setLog)
+        # self.dlg.request_mirror.clicked.disconnect(self.tachyReader.request_mirror_z)
+        self.dlg.logFileEdit.selectionChanged.disconnect(self.setLog)
         # self.dlg.deleteAllButton.clicked.disconnect(self.clearCanvas)
         self.dlg.finished.disconnect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.disconnect(self.dump)
@@ -191,6 +191,9 @@ class Tachy2Gis:
         self.renderer.ResetCamera()
         self.renderer.GetRenderWindow().Render()
 
+    def setCoords(self, coord):
+        self.dlg.coords.setText(*coord)
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
@@ -198,7 +201,7 @@ class Tachy2Gis:
         self.dlg.tachy_connect_button.clicked.connect(self.tachyReader.hook_up)
         # self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
 
-        # self.dlg.logFileButton.clicked.connect(self.setLog)
+        self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking
 
         # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
@@ -259,7 +262,7 @@ class Tachy2Gis:
         tri_filter.SetInputData(poly_data)
         tri_filter.Update()
 
-        # use vtkFeatureEdges for Boundary rendering TODO: make TriangleFilter EdgeVisibilityOn/Off() optional in GUI?
+        # use vtkFeatureEdges for Boundary rendering
         featureEdges = vtk.vtkFeatureEdges()
         featureEdges.SetColoring(0)
         featureEdges.BoundaryEdgesOn()
@@ -272,9 +275,8 @@ class Tachy2Gis:
         edgeMapper = vtk.vtkPolyDataMapper()
         edgeMapper.SetInputConnection(featureEdges.GetOutputPort())
         edgeActor = vtk.vtkActor()
-        edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI
+        edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI?
         edgeActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
-        # edgeActor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Black"))
         edgeActor.SetMapper(edgeMapper)
 
         poly_mapper.SetInputData(tri_filter.GetOutput())
@@ -286,8 +288,8 @@ class Tachy2Gis:
         actor.SetMapper(poly_mapper)
         actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Orange"))
 
-        actor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Red"))
-        actor.GetProperty().EdgeVisibilityOn()
+        # actor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Red"))
+        # actor.GetProperty().EdgeVisibilityOff()
 
         # Create the graphics structure. The renderer renders into the render
         # window. The render window interactor captures mouse events and will
@@ -295,6 +297,7 @@ class Tachy2Gis:
         # nature of the events.
         ren = self.renderer
         renWin = self.vtk_widget.GetRenderWindow()
+        renWin.PointSmoothingOn()  # Point Cloud test
         iren = renWin.GetInteractor()
         iren.SetRenderWindow(renWin)
 
@@ -310,7 +313,7 @@ class Tachy2Gis:
         # We'll zoom in a little by accessing the camera and invoking a "Zoom"
         # method on it.
         ren.ResetCamera()
-        #ren.GetActiveCamera().Zoom(1.5)
+        # ren.GetActiveCamera().Zoom(1.5)
         renWin.Render()
 
     ## Constructor
@@ -506,14 +509,28 @@ class Tachy2Gis:
 # TODO: Replace glyphs with points for visualization
 #       Change point color for latest selection
 #       Snapping visualization
+#       show coordinates in widget 'coords' OnMouseMove
+#       draw lines between points
 class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
+    def __init__(self, parent=None):
+        self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
+        # self.AddObserver("MouseMoveEvent", self.mouse_move_event)  # TODO: camera not rotatable OnMouseMove (blocks left klick)
+        # self.AddObserver("RightButtonReleaseEvent", self.right_button_release_event)
+        self.default_color = (0.0, 1.0, 1.0)
+        self.select_color = (1.0, 0.2, 0.2)
+        self.lastPickedActor = None
+        self.lastPickedProperty = vtk.vtkProperty()
+
     # Creates a glyph on a selected point and returns point coordinates as a tuple
     def OnRightButtonDown(self):
+        if self.lastPickedActor:
+            self.lastPickedActor.GetProperty().SetColor(self.default_color)
+
         clickPos = self.GetInteractor().GetEventPosition()
         print("Click pos: ", clickPos)
         # vtkPointPicker
         picker = vtk.vtkPointPicker()
-        # TODO: Set tolerance in GUI
+        # TODO: Set tolerance in GUI?
         picker.SetTolerance(1000)
         picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())  # vtkPointPicker
         picked = picker.GetPickPosition()  # vtkPointPicker
@@ -521,34 +538,29 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
         picked_point = vtk.vtkPoints()
         picked_point.InsertNextPoint(*picked)
+        vertices = vtk.vtkCellArray()
+        vertices.InsertNextCell(1, [0])
 
-        addSphere = vtk.vtkPolyData()
-        addSphere.SetPoints(picked_point)
+        point_data = vtk.vtkPolyData()
+        point_data.SetPoints(picked_point)
+        point_data.SetVerts(vertices)
 
-        sphereSource = vtk.vtkSphereSource()
-        sphereSource.SetRadius(1000)
-        sphereSource.SetThetaResolution(60)
-        sphereSource.SetPhiResolution(60)
-        sphereSource.SetRadius(1000)
-        glyph3D = vtk.vtkGlyph3D()
-        glyph3D.SetSourceConnection(sphereSource.GetOutputPort())
-        glyph3D.SetInputData(addSphere)
-        glyph3D.Update()
-
-        glyph3Dmapper = vtk.vtkPolyDataMapper()
-        glyph3Dmapper.SetInputConnection(glyph3D.GetOutputPort())
-        glyph3Dmapper.SetInputData(glyph3D.GetOutput())
-        glyph3Dactor = vtk.vtkActor()
-        glyph3Dactor.SetMapper(glyph3Dmapper)
+        pointMapper = vtk.vtkPolyDataMapper()
+        pointMapper.SetInputData(point_data)
+        pointActor = vtk.vtkActor()
+        pointActor.SetMapper(pointMapper)
         # TODO: Set properties?
-        glyph3Dactor.GetProperty().SetColor(1.0, 0.2, 0.2)
-        glyph3Dactor.PickableOff()
+        pointActor.GetProperty().SetColor(self.select_color)
+        pointActor.GetProperty().SetPointSize(10)
+        pointActor.GetProperty().RenderPointsAsSpheresOn()
+        pointActor.PickableOff()
 
-        # TODO: remove spheres on dump? reopening t2g removes spheres
+        # TODO: remove points on dump? reopening t2g removes points
         #       spheres can't be removed from selection
         #       GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
-        self.GetCurrentRenderer().AddActor(glyph3Dactor)
+        self.GetCurrentRenderer().AddActor(pointActor)
         self.GetCurrentRenderer().GetRenderWindow().Render()
+        self.lastPickedActor = pointActor
 
         return picked
 
@@ -568,10 +580,6 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def OnRightButtonUp(self):
         pass
 
-    def __init__(self, parent=None):
-        self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
-        # self.AddObserver("LeftButtonReleaseEvent", self.left_button_release_event)
-
     def right_button_press_event(self, obj, event):
         print("Right Button pressed")
         self.OnRightButtonDown()
@@ -580,5 +588,16 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def right_button_release_event(self, obj, event):
         print("Right Button released")
         self.OnRightButtonUp()
+        return
+
+    def OnMouseMove(self):
+        clickPos = self.GetInteractor().GetEventPosition()
+        picker = vtk.vtkPointPicker()
+        picker.SetTolerance(0)
+        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
+        picked = picker.GetPickPosition()
+
+    def mouse_move_event(self, obj, event):
+        self.OnMouseMove()
         return
 
