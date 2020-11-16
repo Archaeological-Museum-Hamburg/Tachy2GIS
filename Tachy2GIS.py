@@ -34,18 +34,18 @@ except ConnectionRefusedError:
     pass
 """
 import os
-import gc  # TODO: Garbage collect?
+import gc
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
-from qgis.core import QgsMapLayerProxyModel
+from qgis.core import QgsMapLayerProxyModel, QgsProject
 from qgis.gui import QgsMapToolPan
 
 import vtk
 import vtkmodules
-from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
 from vtkmodules.util.colors import tomato
 
 from .T2G.VertexList import T2G_VertexList, T2G_Vertex
@@ -55,6 +55,7 @@ from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
+from .T2G.visualization import VtkWidget
 
 
 def make_axes_actor(scale, xyzLabels):
@@ -121,26 +122,21 @@ class Tachy2Gis:
 
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
-        self.dlg.tachy_connect_button.clicked.disconnect(self.tachyReader.hook_up)
-        # self.dlg.request_mirror.clicked.disconnect(self.tachyReader.request_mirror_z)
-        self.dlg.logFileEdit.selectionChanged.disconnect(self.setLog)
-        # self.dlg.deleteAllButton.clicked.disconnect(self.clearCanvas)
-        self.dlg.finished.disconnect(self.mapTool.clear)
-        self.dlg.dumpButton.clicked.disconnect(self.dump)
-        self.dlg.deleteVertexButton.clicked.disconnect(self.mapTool.deleteVertex)
-        self.dlg.finished.disconnect(self.restoreTool)
-        self.dlg.accepted.disconnect(self.restoreTool)
-        self.dlg.rejected.disconnect(self.restoreTool)
-        self.dlg.rejected.disconnect(self.onCloseCleanup)
-        self.dlg.sourceLayerComboBox.layerChanged.disconnect(self.setActiveLayer)
-        self.dlg.sourceLayerComboBox.layerChanged.disconnect(self.mapTool.clear)
-        self.fieldDialog.targetLayerComboBox.layerChanged.disconnect(self.targetChanged)
-        # self.vertexList.layoutChanged.disconnect(self.dumpEnabled)
-        self.fieldDialog.buttonBox.accepted.disconnect(self.extent_provider.add_feature)
-        self.dlg.zoomResetButton.clicked.disconnect(self.extent_provider.reset)
-        self.dlg.zoomResetButton.clicked.disconnect(self.resetVtkCamera)
-        # self.dlg.rejected.disconnect(self.onCloseCleanup)  # error?
-        self.availability_watchdog.serial_available.disconnect(self.dlg.tachy_connect_button.setText)
+        self.dlg.tachy_connect_button.clicked.disconnect()
+        # self.dlg.request_mirror.clicked.disconnect()
+        self.dlg.logFileEdit.selectionChanged.disconnect()
+        # self.dlg.deleteAllButton.clicked.disconnect()
+        self.dlg.dumpButton.clicked.disconnect()
+        self.dlg.deleteVertexButton.clicked.disconnect()
+        self.dlg.finished.disconnect()
+        self.dlg.accepted.disconnect()
+        self.dlg.rejected.disconnect()
+        self.dlg.sourceLayerComboBox.layerChanged.disconnect()
+        self.fieldDialog.targetLayerComboBox.layerChanged.disconnect()
+        # self.vertexList.layoutChanged.disconnect()
+        self.fieldDialog.buttonBox.accepted.disconnect()
+        self.dlg.zoomResetButton.clicked.disconnect()
+        self.availability_watchdog.serial_available.disconnect()
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
         gc.collect()
@@ -168,8 +164,13 @@ class Tachy2Gis:
             self.tachyReader.setPort(port)
             connect_beep(port)
 
+    # TODO: Log default path QgsProject.instance().homePath()?
     def setLog(self):
-        logFileName = QFileDialog.getOpenFileName()[0]
+        logFileName = QFileDialog.getOpenFileName(None,
+                                                  'Log-Datei speichern...',
+                                                  QgsProject.instance().homePath(),
+                                                  'Text (*.txt)',
+                                                  '*.txt')[0]
         self.dlg.logFileEdit.setText(logFileName)
         self.tachyReader.setLogfile(logFileName)
 
@@ -194,6 +195,34 @@ class Tachy2Gis:
     def setCoords(self, coord):
         self.dlg.coords.setText(*coord)
 
+    # TODO: Progress bar
+    #       vtkPoints too slow with actor for every point
+    # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
+    def loadPointCloud(self):
+        cloudFileName = QFileDialog.getOpenFileName(None,
+                                                    'PointCloud laden...',
+                                                    QgsProject.instance().homePath(),
+                                                    'XYZRGB (*.xyz);;Text (*.txt)',
+                                                    '*.xyz;;*.txt')[0]
+        cellIndex = 0
+        points = vtk.vtkPoints()
+        cells = vtk.vtkCellArray()
+        with open(cloudFileName, 'r', encoding="utf-8-sig") as file:
+            for line in file:
+                split = line.split()
+                points.InsertNextPoint(float(split[0]), float(split[1]), float(split[2]))
+                cells.InsertNextCell(1, [cellIndex])
+                cellIndex += 1
+        polyData = vtk.vtkPolyData()
+        polyData.SetPoints(points)
+        polyData.SetVerts(cells)
+        pointMapper = vtk.vtkPolyDataMapper()
+        pointMapper.SetInputData(polyData)
+        pointActor = vtk.vtkActor()
+        pointActor.SetMapper(pointMapper)
+        pointActor.GetProperty().SetColor(float(split[3]), float(split[4]), float(split[5]))
+        self.renderer.AddActor(pointActor)
+
     # Interface code goes here:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
@@ -201,12 +230,13 @@ class Tachy2Gis:
         self.dlg.tachy_connect_button.clicked.connect(self.tachyReader.hook_up)
         # self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
 
-        self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking
+        self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking/dragging
 
         # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
+        self.dlg.loadPointCloud.clicked.connect(self.loadPointCloud)
 
         # self.dlg.vertexTableView.setModel(self.vertexList)
         # self.dlg.vertexTableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -247,74 +277,25 @@ class Tachy2Gis:
         self.vtk_widget.Initialize()
         self.vtk_widget.Start()
 
-        self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         self.vertexList.signal_anchors_updated.connect(self.update_renderer)
 
-    # TODO: PointClouds, vtk.vtkLineSource/vtkPolyLine, vtk.vtkPoints visualization
+        # # TODO: Implement
+        # # Connect QGIS signals
+        # QgsProject.instance().layersAdded.connect(connectAddedLayer)  # Which connects visibilityChanged
+        # QgsProject.instance().layersAdded.connect(update_renderer)
+        # QgsProject.instance().layersRemoved.connect(disconnectLayer)
+        # QgsProject.instance().layersRemoved.connect(removeVtkLayer)
+        #
+        # # Connect existing QGIS layers
+        # for layer in QgsProject.instance().layerTreeRoot().findLayers():
+        #     layer.visibilityChanged.connect(update_renderer)
+        #     if layer.isVisible():
+        #         pass
+        #         update_renderer(layer.layer())
+
     def update_renderer(self):
-        poly_data = self.vertexList.anchorUpdater.poly_data
-        # The mapper is responsible for pushing the geometry into the graphics
-        # library. It may also do color mapping, if scalars or other
-        # attributes are defined.
-        poly_mapper = vtk.vtkPolyDataMapper()
-        tri_filter = vtk.vtkTriangleFilter()
-        tri_filter.SetInputData(poly_data)
-        tri_filter.Update()
-
-        # use vtkFeatureEdges for Boundary rendering
-        featureEdges = vtk.vtkFeatureEdges()
-        featureEdges.SetColoring(0)
-        featureEdges.BoundaryEdgesOn()
-        featureEdges.FeatureEdgesOff()
-        featureEdges.ManifoldEdgesOff()
-        featureEdges.NonManifoldEdgesOff()
-        featureEdges.SetInputData(poly_data)
-        featureEdges.Update()
-
-        edgeMapper = vtk.vtkPolyDataMapper()
-        edgeMapper.SetInputConnection(featureEdges.GetOutputPort())
-        edgeActor = vtk.vtkActor()
-        edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI?
-        edgeActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
-        edgeActor.SetMapper(edgeMapper)
-
-        poly_mapper.SetInputData(tri_filter.GetOutput())
-
-        # The actor is a grouping mechanism: besides the geometry (mapper), it
-        # also has a property, transformation matrix, and/or texture map.
-        # Here we set its color and rotate it -22.5 degrees.
-        actor = vtk.vtkActor()
-        actor.SetMapper(poly_mapper)
-        actor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Orange"))
-
-        # actor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Red"))
-        # actor.GetProperty().EdgeVisibilityOff()
-
-        # Create the graphics structure. The renderer renders into the render
-        # window. The render window interactor captures mouse events and will
-        # perform appropriate camera or actor manipulation depending on the
-        # nature of the events.
-        ren = self.renderer
-        renWin = self.vtk_widget.GetRenderWindow()
-        renWin.PointSmoothingOn()  # Point Cloud test
-        iren = renWin.GetInteractor()
-        iren.SetRenderWindow(renWin)
-
-        # Add the actors to the renderer, set the background and size
-        ren.AddActor(actor)
-        ren.AddActor(edgeActor)
-        ren.SetBackground(vtk.vtkNamedColors().GetColor3d("light_grey"))
-
-        # This allows the interactor to initalize itself. It has to be
-        # called before an event loop.
-        iren.Initialize()
-
-        # We'll zoom in a little by accessing the camera and invoking a "Zoom"
-        # method on it.
-        ren.ResetCamera()
-        # ren.GetActiveCamera().Zoom(1.5)
-        renWin.Render()
+        self.vtk_widget.refresh_content(self.dlg.sourceLayerComboBox.currentLayer())
 
     ## Constructor
     #  @param iface An interface instance that will be passed to this class
@@ -324,9 +305,8 @@ class Tachy2Gis:
         # Save reference to the QGIS interface
         self.iface = iface
         self.dlg = Tachy2GisDialog()
-        self.renderer = vtk.vtkRenderer()
         self.render_container_layout = QVBoxLayout()
-        self.vtk_widget = QVTKRenderWindowInteractor(self.dlg.vtk_frame)
+        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
@@ -483,9 +463,9 @@ class Tachy2Gis:
         """Run method that performs all the real work"""
         # # Create the dialog (after translation) and keep reference
         self.dlg = Tachy2GisDialog()
-        self.renderer = vtk.vtkRenderer()
+        #self.renderer = vtk.vtkRenderer()
         self.render_container_layout = QVBoxLayout()
-        self.vtk_widget = QVTKRenderWindowInteractor(self.dlg.vtk_frame)
+        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
         self.setupControls()
         self.availability_watchdog.start()
         self.tachyReader.start()

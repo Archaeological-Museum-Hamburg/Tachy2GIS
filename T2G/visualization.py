@@ -1,5 +1,6 @@
 import vtk
 from qgis.core import QgsFeature, QgsGeometry
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from random import random
 from .AnchorUpdater import VtkAnchorUpdater
@@ -25,11 +26,12 @@ class ColourProvider:
     colours = COLOUR_SPACE
 
     def next(self):
-        self.index +=1
+        self.index += 1
         if self.index > len(self.colours):
             return vtk.vtkColour3D(random(), random(), random())
         else:
-            return COLOUR_SPACE[self.index]
+            return vtk.vtkNamedColors().GetColor3d(COLOUR_SPACE[self.index])
+
 
 class VtkGeometry:
     POLYGON = 1006
@@ -86,5 +88,84 @@ class VtkPolyLayer(VtkLayer):
             self.extractor.anchors.InsertNextPoint(*vertex.get_coordinates())
         self.extractor.polies.InsertNextCell(new_poly)
 
+    def get_actors(self, colour):
+        poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
 
+        poly_mapper = vtk.vtkPolyDataMapper()
+        tri_filter = vtk.vtkTriangleFilter()
+        tri_filter.SetInputData(poly_data)
+        tri_filter.Update()
+
+        # use vtkFeatureEdges for Boundary rendering
+        featureEdges = vtk.vtkFeatureEdges()
+        featureEdges.SetColoring(0)
+        featureEdges.BoundaryEdgesOn()
+        featureEdges.FeatureEdgesOff()
+        featureEdges.ManifoldEdgesOff()
+        featureEdges.NonManifoldEdgesOff()
+        featureEdges.SetInputData(poly_data)
+        featureEdges.Update()
+
+        edgeMapper = vtk.vtkPolyDataMapper()
+        edgeMapper.SetInputConnection(featureEdges.GetOutputPort())
+        edgeActor = vtk.vtkActor()
+        edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI?
+        edgeActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
+        edgeActor.SetMapper(edgeMapper)
+
+        poly_mapper.SetInputData(tri_filter.GetOutput())
+
+        # The actor is a grouping mechanism: besides the geometry (mapper), it
+        # also has a property, transformation matrix, and/or texture map.
+        # Here we set its color and rotate it -22.5 degrees.
+        actor = vtk.vtkActor()
+        actor.SetMapper(poly_mapper)
+        actor.GetProperty().SetColor(colour)
+
+        return actor, edgeActor
+
+
+class VtkWidget(QVTKRenderWindowInteractor):
+    def __init__(self, widget):
+        self.renderer = vtk.vtkRenderer()
+        self.colour_provider = ColourProvider()
+        super().__init__(widget)
+        self.GetRenderWindow().AddRenderer(self.renderer)
+
+    # TODO: PointClouds, vtk.vtkLineSource/vtkPolyLine, vtk.vtkPoints visualization
+    def refresh_content(self, layer):
+        # The mapper is responsible for pushing the geometry into the graphics
+        # library. It may also do color mapping, if scalars or other
+        # attributes are defined.
+
+        # actor.GetProperty().SetEdgeColor(vtk.vtkNamedColors().GetColor3d("Red"))
+        # actor.GetProperty().EdgeVisibilityOff()
+
+        # Create the graphics structure. The renderer renders into the render
+        # window. The render window interactor captures mouse events and will
+        # perform appropriate camera or actor manipulation depending on the
+        # nature of the events.
+        vtk_layer = VtkPolyLayer(layer)
+
+        ren = self.renderer
+        renWin = self.GetRenderWindow()
+        renWin.PointSmoothingOn()  # Point Cloud test
+        iren = renWin.GetInteractor()
+        iren.SetRenderWindow(renWin)
+
+        # Add the actors to the renderer, set the background and size
+        actor, edgeActor = vtk_layer.get_actors(self.colour_provider.next())
+        ren.AddActor(actor)
+        ren.AddActor(edgeActor)
+        ren.SetBackground(vtk.vtkNamedColors().GetColor3d("light_grey"))
+
+        # This allows the interactor to initalize itself. It has to be
+        # called before an event loop.
+        iren.Initialize()
+
+        # We'll zoom in a little by accessing the camera and invoking a "Zoom"
+        # method on it.
+        ren.ResetCamera()
+        # ren.GetActiveCamera().Zoom(1.5)
+        renWin.Render()
 
