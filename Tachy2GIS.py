@@ -44,9 +44,6 @@ from qgis.core import QgsMapLayerProxyModel, QgsProject
 from qgis.gui import QgsMapToolPan
 
 import vtk
-import vtkmodules
-
-from vtkmodules.util.colors import tomato
 
 from .T2G.VertexList import T2G_VertexList, T2G_Vertex
 from .T2G.TachyReader import TachyReader, AvailabilityWatchdog
@@ -140,7 +137,6 @@ class Tachy2Gis:
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
         gc.collect()
-        print("Signals disconnected!")
 
     def setActiveLayer(self):
         if Qt is None:
@@ -196,7 +192,6 @@ class Tachy2Gis:
         self.dlg.coords.setText(*coord)
 
     # TODO: Progress bar
-    #       vtkPoints too slow with actor for every point
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
     def loadPointCloud(self):
         cloudFileName = QFileDialog.getOpenFileName(None,
@@ -205,13 +200,17 @@ class Tachy2Gis:
                                                     'XYZRGB (*.xyz);;Text (*.txt)',
                                                     '*.xyz;;*.txt')[0]
         cellIndex = 0
+        # test
+        pid = [0]
         points = vtk.vtkPoints()
         cells = vtk.vtkCellArray()
         with open(cloudFileName, 'r', encoding="utf-8-sig") as file:
             for line in file:
                 split = line.split()
-                points.InsertNextPoint(float(split[0]), float(split[1]), float(split[2]))
-                cells.InsertNextCell(1, [cellIndex])
+                # test
+                pid[0] = points.InsertNextPoint(float(split[0]), float(split[1]), float(split[2]))
+                cells.InsertNextCell(1, pid)
+                # cells.InsertNextCell(1, [cellIndex])
                 cellIndex += 1
         polyData = vtk.vtkPolyData()
         polyData.SetPoints(points)
@@ -221,7 +220,8 @@ class Tachy2Gis:
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
         pointActor.GetProperty().SetColor(float(split[3]), float(split[4]), float(split[5]))
-        self.renderer.AddActor(pointActor)
+        # self.renderer.AddActor(pointActor)
+        self.vtk_widget.renderer.AddActor(pointActor)
 
     # Interface code goes here:
     def setupControls(self):

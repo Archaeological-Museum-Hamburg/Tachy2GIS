@@ -27,8 +27,8 @@ class ColourProvider:
 
     def next(self):
         self.index += 1
-        if self.index > len(self.colours):
-            return vtk.vtkColour3D(random(), random(), random())
+        if self.index > len(self.colours) - 1:
+            return vtk.vtkColor3d(random(), random(), random())
         else:
             return vtk.vtkNamedColors().GetColor3d(COLOUR_SPACE[self.index])
 
@@ -89,7 +89,8 @@ class VtkPolyLayer(VtkLayer):
         self.extractor.polies.InsertNextCell(new_poly)
 
     def get_actors(self, colour):
-        poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
+        #poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
+        poly_data = self.extractor.layer_cache[self.source_layer.id()]['poly_data']
 
         poly_mapper = vtk.vtkPolyDataMapper()
         tri_filter = vtk.vtkTriangleFilter()
