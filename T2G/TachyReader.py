@@ -127,3 +127,15 @@ class TachyReader(QThread):
         if self.ser.isOpen():
             self.ser.close()
         self.pollingTimer.stop()
+
+    # TODO: crash when opening port without using the ping button
+    #       reflector height is getting set, but not updated in tachymeter while measuring
+    def setReflectorHeight(self, refHeight):
+        self.ser.close()
+        self.ser.open(QSerialPort.ReadWrite)
+        if self.ser.isOpen():
+            self.ser.writeData(("%R1Q,2012:" + str(refHeight) + gc.CRLF).encode('ascii'))
+        else:
+            # TODO: MessageBar?
+            # iface.messageBar().pushMessage("", level=Qgis.Info, duration=10)
+            QgsMessageLog.logMessage("Connection failed!")

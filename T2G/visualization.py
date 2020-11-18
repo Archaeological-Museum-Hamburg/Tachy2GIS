@@ -42,6 +42,7 @@ class VtkLayer:
     def __init__(self, qgs_layer):
         self.source_layer = qgs_layer
         self.id = self.source_layer.id()
+        self.wkbType = self.source_layer.wkbType()
         self.extractor = VtkAnchorUpdater(layer=self.source_layer)
         self.anchors = self.extractor.anchors
         self.geometries = self.extractor.geometries
@@ -50,7 +51,6 @@ class VtkLayer:
         self.extractor.signalAnchorCount.connect(dialog.setAnchorCount)
         self.extractor.signalAnchorProgress.connect(dialog.anchorProgress)
         self.extractor.signalGeometriesProgress.connect(dialog.geometriesProgress)
-        # dialog.show()
         self.extractor.startExtraction()
 
     def make_wkt(self, vertices):
@@ -170,3 +170,120 @@ class VtkWidget(QVTKRenderWindowInteractor):
         # ren.GetActiveCamera().Zoom(1.5)
         renWin.Render()
 
+
+# TODO: Snapping visualization
+#       show coordinates in widget 'coords' OnMouseMove
+class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
+    def __init__(self, parent=None):
+        self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
+        # self.AddObserver("MouseMoveEvent", self.mouse_move_event)  # TODO: camera not rotatable OnMouseMove (blocks left klick)
+        # self.AddObserver("RightButtonReleaseEvent", self.right_button_release_event)
+        self.default_color = (0.0, 1.0, 1.0)
+        self.select_color = (1.0, 0.2, 0.2)
+        self.lastPickedActor = None
+        self.lastPickedProperty = vtk.vtkProperty()
+
+    # Creates a vtkPoints with RenderAsSpheresOn on a selected point and returns point coordinates as a tuple
+    def OnRightButtonDown(self):
+        if self.lastPickedActor:
+            self.lastPickedActor.GetProperty().SetColor(self.default_color)
+            # print(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
+
+        clickPos = self.GetInteractor().GetEventPosition()
+        print("Click pos: ", clickPos)
+        # vtkPointPicker
+        picker = vtk.vtkPointPicker()
+        # TODO: Set tolerance in GUI?
+        picker.SetTolerance(1000)
+        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())  # vtkPointPicker
+        picked = picker.GetPickPosition()  # vtkPointPicker
+        print("vtkPointPicker picked: ", picked)
+
+        picked_point = vtk.vtkPoints()
+        picked_point.InsertNextPoint(*picked)
+        vertices = vtk.vtkCellArray()
+        vertices.InsertNextCell(1, [0])
+
+        point_data = vtk.vtkPolyData()
+        point_data.SetPoints(picked_point)
+        point_data.SetVerts(vertices)
+
+        pointMapper = vtk.vtkPolyDataMapper()
+        pointMapper.SetInputData(point_data)
+        pointActor = vtk.vtkActor()
+        pointActor.SetMapper(pointMapper)
+        # TODO: Set properties?
+        pointActor.GetProperty().SetColor(self.select_color)
+        pointActor.GetProperty().SetPointSize(10)
+        pointActor.GetProperty().RenderPointsAsSpheresOn()
+        pointActor.PickableOff()
+
+        # draw lines between points
+        if self.lastPickedActor:
+            picked_point.InsertNextPoint(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
+
+            polyLine = vtk.vtkPolyLine()
+            polyLine.GetPointIds().SetNumberOfIds(2)
+            for i in range(0, 2):
+                polyLine.GetPointIds().SetId(i, i)
+            cells = vtk.vtkCellArray()
+            cells.InsertNextCell(polyLine)
+
+            polyData = vtk.vtkPolyData()
+            polyData.SetPoints(picked_point)
+            polyData.SetLines(cells)
+
+            lineMapper = vtk.vtkPolyDataMapper()
+            lineMapper.SetInputData(polyData)
+            lineActor = vtk.vtkActor()
+            lineActor.SetMapper(lineMapper)
+            lineActor.PickableOff()
+            lineActor.GetProperty().SetColor(1.0, 0.0, 0.0)
+            lineActor.GetProperty().SetLineWidth(3)
+            self.GetCurrentRenderer().AddActor(lineActor)
+
+        # TODO: remove points on dump? reopening t2g removes points
+        #       points can't be removed from selection
+        #       GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
+        self.GetCurrentRenderer().AddActor(pointActor)
+        self.GetCurrentRenderer().GetRenderWindow().Render()
+        self.lastPickedActor = pointActor
+
+        return picked
+
+        # vtkCellPicker test
+        # picker = vtk.vtkCellPicker()
+        # picker.SetTolerance(10000)
+        # picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
+        # picked = picker.GetCellId()
+        # print("vtkCellPicker picked: ", picked)
+
+        # vtkPropPicker test
+        # picker = vtk.vtkPropPicker()
+        # picker.PickProp(clickPos[0], clickPos[1], self.GetCurrentRenderer())
+        # picked = picker.GetViewProp()
+        # print("Picked: ", picked)
+
+    def OnRightButtonUp(self):
+        pass
+
+    def right_button_press_event(self, obj, event):
+        print("Right Button pressed")
+        self.OnRightButtonDown()
+        return
+
+    def right_button_release_event(self, obj, event):
+        print("Right Button released")
+        self.OnRightButtonUp()
+        return
+
+    def OnMouseMove(self):
+        clickPos = self.GetInteractor().GetEventPosition()
+        picker = vtk.vtkPointPicker()
+        picker.SetTolerance(0)
+        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
+        picked = picker.GetPickPosition()
+
+    def mouse_move_event(self, obj, event):
+        self.OnMouseMove()
+        return

@@ -52,7 +52,7 @@ from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
-from .T2G.visualization import VtkWidget
+from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle
 
 
 def make_axes_actor(scale, xyzLabels):
@@ -129,6 +129,7 @@ class Tachy2Gis:
         self.dlg.accepted.disconnect()
         self.dlg.rejected.disconnect()
         self.dlg.sourceLayerComboBox.layerChanged.disconnect()
+        self.dlg.setRefHeight.returnPressed.disconnect()
         self.fieldDialog.targetLayerComboBox.layerChanged.disconnect()
         # self.vertexList.layoutChanged.disconnect()
         self.fieldDialog.buttonBox.accepted.disconnect()
@@ -185,11 +186,15 @@ class Tachy2Gis:
         self.dlg.tachy_connect_button.text = txt
 
     def resetVtkCamera(self):
-        self.renderer.ResetCamera()
-        self.renderer.GetRenderWindow().Render()
+        self.vtk_widget.renderer.ResetCamera()
+        self.vtk_widget.renderer.GetRenderWindow().Render()
 
     def setCoords(self, coord):
         self.dlg.coords.setText(*coord)
+
+    def setRefHeight(self):
+        refHeight = float(self.dlg.setRefHeight.text())
+        self.tachyReader.setReflectorHeight(refHeight)
 
     # TODO: Progress bar
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
@@ -200,17 +205,13 @@ class Tachy2Gis:
                                                     'XYZRGB (*.xyz);;Text (*.txt)',
                                                     '*.xyz;;*.txt')[0]
         cellIndex = 0
-        # test
-        pid = [0]
         points = vtk.vtkPoints()
         cells = vtk.vtkCellArray()
         with open(cloudFileName, 'r', encoding="utf-8-sig") as file:
             for line in file:
                 split = line.split()
-                # test
-                pid[0] = points.InsertNextPoint(float(split[0]), float(split[1]), float(split[2]))
-                cells.InsertNextCell(1, pid)
-                # cells.InsertNextCell(1, [cellIndex])
+                points.InsertNextPoint(float(split[0]), float(split[1]), float(split[2]))
+                cells.InsertNextCell(1, [cellIndex])
                 cellIndex += 1
         polyData = vtk.vtkPolyData()
         polyData.SetPoints(points)
@@ -220,7 +221,6 @@ class Tachy2Gis:
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
         pointActor.GetProperty().SetColor(float(split[3]), float(split[4]), float(split[5]))
-        # self.renderer.AddActor(pointActor)
         self.vtk_widget.renderer.AddActor(pointActor)
 
     # Interface code goes here:
@@ -229,6 +229,7 @@ class Tachy2Gis:
         It is called in add_action"""
         self.dlg.tachy_connect_button.clicked.connect(self.tachyReader.hook_up)
         # self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
+        self.dlg.setRefHeight.returnPressed.connect(self.setRefHeight)
 
         self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking/dragging
 
@@ -484,122 +485,3 @@ class Tachy2Gis:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
-
-
-# TODO: Snapping visualization
-#       show coordinates in widget 'coords' OnMouseMove
-class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
-    def __init__(self, parent=None):
-        self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
-        # self.AddObserver("MouseMoveEvent", self.mouse_move_event)  # TODO: camera not rotatable OnMouseMove (blocks left klick)
-        # self.AddObserver("RightButtonReleaseEvent", self.right_button_release_event)
-        self.default_color = (0.0, 1.0, 1.0)
-        self.select_color = (1.0, 0.2, 0.2)
-        self.lastPickedActor = None
-        self.lastPickedProperty = vtk.vtkProperty()
-
-    # Creates a vtkPoints with RenderAsSpheresOn on a selected point and returns point coordinates as a tuple
-    def OnRightButtonDown(self):
-        if self.lastPickedActor:
-            self.lastPickedActor.GetProperty().SetColor(self.default_color)
-            # print(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
-
-        clickPos = self.GetInteractor().GetEventPosition()
-        print("Click pos: ", clickPos)
-        # vtkPointPicker
-        picker = vtk.vtkPointPicker()
-        # TODO: Set tolerance in GUI?
-        picker.SetTolerance(1000)
-        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())  # vtkPointPicker
-        picked = picker.GetPickPosition()  # vtkPointPicker
-        print("vtkPointPicker picked: ", picked)
-
-        picked_point = vtk.vtkPoints()
-        picked_point.InsertNextPoint(*picked)
-        vertices = vtk.vtkCellArray()
-        vertices.InsertNextCell(1, [0])
-
-        point_data = vtk.vtkPolyData()
-        point_data.SetPoints(picked_point)
-        point_data.SetVerts(vertices)
-
-        pointMapper = vtk.vtkPolyDataMapper()
-        pointMapper.SetInputData(point_data)
-        pointActor = vtk.vtkActor()
-        pointActor.SetMapper(pointMapper)
-        # TODO: Set properties?
-        pointActor.GetProperty().SetColor(self.select_color)
-        pointActor.GetProperty().SetPointSize(10)
-        pointActor.GetProperty().RenderPointsAsSpheresOn()
-        pointActor.PickableOff()
-
-        # draw lines between points
-        if self.lastPickedActor:
-            picked_point.InsertNextPoint(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
-
-            polyLine = vtk.vtkPolyLine()
-            polyLine.GetPointIds().SetNumberOfIds(2)
-            for i in range(0, 2):
-                polyLine.GetPointIds().SetId(i, i)
-            cells = vtk.vtkCellArray()
-            cells.InsertNextCell(polyLine)
-
-            polyData = vtk.vtkPolyData()
-            polyData.SetPoints(picked_point)
-            polyData.SetLines(cells)
-
-            lineMapper = vtk.vtkPolyDataMapper()
-            lineMapper.SetInputData(polyData)
-            lineActor = vtk.vtkActor()
-            lineActor.SetMapper(lineMapper)
-            lineActor.PickableOff()
-            lineActor.GetProperty().SetColor(1.0, 0.0, 0.0)
-            lineActor.GetProperty().SetLineWidth(3)
-            self.GetCurrentRenderer().AddActor(lineActor)
-
-        # TODO: remove points on dump? reopening t2g removes points
-        #       points can't be removed from selection
-        #       GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
-        self.GetCurrentRenderer().AddActor(pointActor)
-        self.GetCurrentRenderer().GetRenderWindow().Render()
-        self.lastPickedActor = pointActor
-
-        return picked
-
-        # vtkCellPicker test
-        # picker = vtk.vtkCellPicker()
-        # picker.SetTolerance(10000)
-        # picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
-        # picked = picker.GetCellId()
-        # print("vtkCellPicker picked: ", picked)
-
-        # vtkPropPicker test
-        # picker = vtk.vtkPropPicker()
-        # picker.PickProp(clickPos[0], clickPos[1], self.GetCurrentRenderer())
-        # picked = picker.GetViewProp()
-        # print("Picked: ", picked)
-
-    def OnRightButtonUp(self):
-        pass
-
-    def right_button_press_event(self, obj, event):
-        print("Right Button pressed")
-        self.OnRightButtonDown()
-        return
-
-    def right_button_release_event(self, obj, event):
-        print("Right Button released")
-        self.OnRightButtonUp()
-        return
-
-    def OnMouseMove(self):
-        clickPos = self.GetInteractor().GetEventPosition()
-        picker = vtk.vtkPointPicker()
-        picker.SetTolerance(0)
-        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
-        picked = picker.GetPickPosition()
-
-    def mouse_move_event(self, obj, event):
-        self.OnMouseMove()
-        return
-

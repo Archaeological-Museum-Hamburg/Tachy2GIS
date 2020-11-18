@@ -36,7 +36,7 @@
     <number>4</number>
    </property>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,3,0,0,0,1,3,0,0">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,3,0,0,0,1,3,0,0,0">
      <item>
       <widget class="QPushButton" name="zoomResetButton">
        <property name="maximumSize">
@@ -56,7 +56,7 @@
      <item>
       <widget class="QComboBox" name="zoomModeComboBox">
        <property name="toolTip">
-        <string>Zoom Modus</string>
+        <string>Autozoom</string>
        </property>
       </widget>
      </item>
@@ -155,13 +155,13 @@
       <widget class="QLineEdit" name="coords">
        <property name="minimumSize">
         <size>
-         <width>250</width>
+         <width>200</width>
          <height>0</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>250</width>
+         <width>200</width>
          <height>16777215</height>
         </size>
        </property>
@@ -192,6 +192,25 @@
        </property>
        <property name="clearButtonEnabled">
         <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="setRefHeight">
+       <property name="minimumSize">
+        <size>
+         <width>60</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>60</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Reflektorhöhe setzen und mit Enter bestätigen</string>
        </property>
       </widget>
      </item>
