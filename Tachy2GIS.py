@@ -119,15 +119,13 @@ class Tachy2Gis:
 
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
+        self.dlg.closingPlugin.disconnect(self.onCloseCleanup)
         self.dlg.tachy_connect_button.clicked.disconnect()
         # self.dlg.request_mirror.clicked.disconnect()
         self.dlg.logFileEdit.selectionChanged.disconnect()
         # self.dlg.deleteAllButton.clicked.disconnect()
         self.dlg.dumpButton.clicked.disconnect()
         self.dlg.deleteVertexButton.clicked.disconnect()
-        self.dlg.finished.disconnect()
-        self.dlg.accepted.disconnect()
-        self.dlg.rejected.disconnect()
         self.dlg.sourceLayerComboBox.layerChanged.disconnect()
         self.dlg.setRefHeight.returnPressed.disconnect()
         self.fieldDialog.targetLayerComboBox.layerChanged.disconnect()
@@ -137,7 +135,9 @@ class Tachy2Gis:
         self.availability_watchdog.serial_available.disconnect()
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
+        self.restoreTool()
         gc.collect()
+        print('Signals disconnected!')
 
     def setActiveLayer(self):
         if Qt is None:
@@ -196,6 +196,9 @@ class Tachy2Gis:
         refHeight = float(self.dlg.setRefHeight.text())
         self.tachyReader.setReflectorHeight(refHeight)
 
+    def getRefHeight(self):
+        self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
+
     # TODO: Progress bar
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
     def loadPointCloud(self):
@@ -227,14 +230,16 @@ class Tachy2Gis:
     def setupControls(self):
         """This method connects all controls in the UI to their callbacks.
         It is called in add_action"""
+        self.dlg.closingPlugin.connect(self.onCloseCleanup)
         self.dlg.tachy_connect_button.clicked.connect(self.tachyReader.hook_up)
         # self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
+        self.tachyReader.mirror_z_received.connect(self.getRefHeight)
         self.dlg.setRefHeight.returnPressed.connect(self.setRefHeight)
 
         self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking/dragging
 
         # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
-        self.dlg.finished.connect(self.mapTool.clear)
+        #self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         self.dlg.loadPointCloud.clicked.connect(self.loadPointCloud)
@@ -243,11 +248,6 @@ class Tachy2Gis:
         # self.dlg.vertexTableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         # self.dlg.vertexTableView.setSelectionModel(QItemSelectionModel(self.vertexList))
         # self.dlg.vertexTableView.selectionModel().selectionChanged.connect(self.mapTool.selectVertex)
-
-        self.dlg.finished.connect(self.restoreTool)
-        self.dlg.accepted.connect(self.restoreTool)
-        self.dlg.rejected.connect(self.restoreTool)
-        self.dlg.rejected.connect(self.onCloseCleanup)
 
         self.dlg.sourceLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
@@ -347,6 +347,8 @@ class Tachy2Gis:
         # self.pollingThread.start()
         self.tachyReader.lineReceived.connect(self.vertexReceived)
         # self.tachyReader.beginListening()
+        self.pluginIsActive = False
+        self.dlg = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -462,11 +464,15 @@ class Tachy2Gis:
 
     def run(self):
         """Run method that performs all the real work"""
+
+        if not self.pluginIsActive:
+            self.pluginIsActive = True
+
         # # Create the dialog (after translation) and keep reference
-        self.dlg = Tachy2GisDialog()
-        #self.renderer = vtk.vtkRenderer()
-        self.render_container_layout = QVBoxLayout()
-        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
+        if self.dlg is None:
+            self.dlg = Tachy2GisDialog()
+            self.render_container_layout = QVBoxLayout()
+            self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
         self.setupControls()
         self.availability_watchdog.start()
         self.tachyReader.start()
@@ -475,13 +481,6 @@ class Tachy2Gis:
         self.iface.mapCanvas().setMapTool(self.mapTool)
         self.mapTool.alive = True
         self.setActiveLayer()
+        self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
         self.dlg.show()
-
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        self.tachyReader.hook_up()

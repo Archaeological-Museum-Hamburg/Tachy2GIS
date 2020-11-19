@@ -83,8 +83,10 @@ class GeoCOMMessageQueue:
         return messages
 
     def handle_reply(self, reply):
-        request = self.slots.pop(reply.transaction_id)['message']
-        return request, reply
+        reply = GeoCOMReply(reply)
+        return reply
+        # request = self.slots.pop(reply.transaction_id)['message']
+        # return request, reply
 
 
 class GeoCOMPing(QThread):

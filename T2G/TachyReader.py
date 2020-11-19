@@ -47,7 +47,7 @@ class AvailabilityWatchdog(QThread):
 
 class TachyReader(QThread):
     lineReceived = pyqtSignal(str)
-    mirror_z_received = pyqtSignal(str)
+    mirror_z_received = pyqtSignal()
     geo_com_received = pyqtSignal(str)
     got_it = pyqtSignal(str)
     pollingInterval = 1000
@@ -61,6 +61,7 @@ class TachyReader(QThread):
         self.hasLogFile = False
         self.logFileName = ''
         self.queue = GeoCOMMessageQueue()
+        self.getRefHeight = ''
         super().__init__()
 
     def hook_up(self):
@@ -73,6 +74,7 @@ class TachyReader(QThread):
             gsi_ping.exec()
 
     def poll(self):
+        self.getRefHeight = self.getReflectorHeight()
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
@@ -81,10 +83,13 @@ class TachyReader(QThread):
                 return
             if line_string.startswith(GEOCOM_RESPONSE_IDENTIFIER):
                 QgsMessageLog.logMessage("Received GeoCOM Message: " + line_string)
-                request, reply = self.queue.handle_reply(line_string)
+                # request, reply = self.queue.handle_reply(line)
+                reply = self.queue.handle_reply(line)
                 if reply.ret_code == gc_constants.GRC_OK:
-                    z = reply.results[0]
-                    self.mirror_z_received.emit(z)
+                    # TODO: Only sets reflector height - does not handle replies right now
+                    self.getRefHeight = str(round(float(reply.results[0]), 3))
+                    # z = reply.results[0]
+                    self.mirror_z_received.emit()
             else:
                 self.lineReceived.emit(line_string)
                 if self.hasLogFile:
@@ -139,3 +144,13 @@ class TachyReader(QThread):
             # TODO: MessageBar?
             # iface.messageBar().pushMessage("", level=Qgis.Info, duration=10)
             QgsMessageLog.logMessage("Connection failed!")
+
+    def getReflectorHeight(self):
+        # self.ser.close()
+        # self.ser.open(QSerialPort.ReadWrite)
+        if self.ser.isOpen():
+            self.ser.writeData(("%R1Q,2011:Height\r\n").encode('ascii'))
+            # response = self.ser.readLine()  # PyQt5.QtCore.QByteArray(b'%R1P,0,0:0,3.141\r\n') 3.141 = Tachy height
+            # return str(bytes(response).decode('ascii').split(',')[3].strip("\r\n"))
+        else:
+            QgsMessageLog.logMessage("Couldn't get reflector height!")

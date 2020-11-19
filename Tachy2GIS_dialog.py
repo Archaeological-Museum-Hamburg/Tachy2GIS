@@ -21,9 +21,9 @@
  ***************************************************************************/
 """
 
-from PyQt5 import uic
-from PyQt5.QtWidgets import QDialog
 import os
+from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.PyQt.QtCore import pyqtSignal
 
 # UI_FILE_NAME = 'Tachy2GIS_dialog_base.ui'
 UI_FILE_NAME = 't2g_widget.ui'
@@ -32,7 +32,10 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), UI_FILE_NAME))
 
 
-class Tachy2GisDialog(QDialog, FORM_CLASS):
+class Tachy2GisDialog(QtWidgets.QDockWidget, FORM_CLASS):
+
+    closingPlugin = pyqtSignal()
+
     def __init__(self, parent=None):
         """Constructor."""
         super(Tachy2GisDialog, self).__init__(parent)
@@ -42,3 +45,7 @@ class Tachy2GisDialog(QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+    def closeEvent(self, event):
+        self.closingPlugin.emit()
+        event.accept()

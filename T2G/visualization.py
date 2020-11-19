@@ -33,25 +33,21 @@ class ColourProvider:
             return vtk.vtkNamedColors().GetColor3d(COLOUR_SPACE[self.index])
 
 
-class VtkGeometry:
-    POLYGON = 1006
-    MULTIPOLYGONZM = 3006
-
-
 class VtkLayer:
     def __init__(self, qgs_layer):
         self.source_layer = qgs_layer
         self.id = self.source_layer.id()
         self.wkbType = self.source_layer.wkbType()
-        self.extractor = VtkAnchorUpdater(layer=self.source_layer)
+        self.extractor = VtkAnchorUpdater(layer=self.source_layer, wkbType=self.wkbType)
         self.anchors = self.extractor.anchors
         self.geometries = self.extractor.geometries
+        self.poly_data = self.extractor.poly_data
 
     def update(self, dialog):
         self.extractor.signalAnchorCount.connect(dialog.setAnchorCount)
         self.extractor.signalAnchorProgress.connect(dialog.anchorProgress)
         self.extractor.signalGeometriesProgress.connect(dialog.geometriesProgress)
-        self.extractor.startExtraction()
+        self.poly_data = self.extractor.startExtraction(self.wkbType)
 
     def make_wkt(self, vertices):
         raise NotImplementedError("Vtk layers have to implement this for each type of geometry")
@@ -89,8 +85,11 @@ class VtkPolyLayer(VtkLayer):
         self.extractor.polies.InsertNextCell(new_poly)
 
     def get_actors(self, colour):
-        #poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
-        poly_data = self.extractor.layer_cache[self.source_layer.id()]['poly_data']
+        # poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
+        #poly_data = self.extractor.layer_cache[self.source_layer.id()]['poly_data']
+        # TODO: Get poly_data from VtkLayer
+        poly_data = self.extractor.startExtraction(self.wkbType)
+        # print(self.poly_data)
 
         poly_mapper = vtk.vtkPolyDataMapper()
         tri_filter = vtk.vtkTriangleFilter()
