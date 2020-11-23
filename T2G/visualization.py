@@ -131,9 +131,24 @@ class VtkWidget(QVTKRenderWindowInteractor):
         self.colour_provider = ColourProvider()
         super().__init__(widget)
         self.GetRenderWindow().AddRenderer(self.renderer)
+        self.layers = {}
+
+    def switch_layer(self, qgis_layer):
+        layer_id = qgis_layer.id()
+        print(layer_id)
+        if layer_id not in self.layers.keys():
+            print(self.layers)
+            created = VtkPolyLayer(qgs_layer=qgis_layer)
+            print('made a new one!')
+            self.layers[layer_id] = created
+            actor, edge_actor = created.get_actors(self.colour_provider.next())
+            self.renderer.AddActor(actor)
+            self.renderer.AddActor(edge_actor)
+        self.refresh_content()
+
 
     # TODO: PointClouds, vtk.vtkLineSource/vtkPolyLine, vtk.vtkPoints visualization
-    def refresh_content(self, layer):
+    def refresh_content(self):
         # The mapper is responsible for pushing the geometry into the graphics
         # library. It may also do color mapping, if scalars or other
         # attributes are defined.
@@ -145,7 +160,6 @@ class VtkWidget(QVTKRenderWindowInteractor):
         # window. The render window interactor captures mouse events and will
         # perform appropriate camera or actor manipulation depending on the
         # nature of the events.
-        vtk_layer = VtkPolyLayer(layer)
 
         ren = self.renderer
         renWin = self.GetRenderWindow()
@@ -154,9 +168,6 @@ class VtkWidget(QVTKRenderWindowInteractor):
         iren.SetRenderWindow(renWin)
 
         # Add the actors to the renderer, set the background and size
-        actor, edgeActor = vtk_layer.get_actors(self.colour_provider.next())
-        ren.AddActor(actor)
-        ren.AddActor(edgeActor)
         ren.SetBackground(vtk.vtkNamedColors().GetColor3d("light_grey"))
 
         # This allows the interactor to initalize itself. It has to be
@@ -182,6 +193,11 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.select_color = (1.0, 0.2, 0.2)
         self.lastPickedActor = None
         self.lastPickedProperty = vtk.vtkProperty()
+        self.vertices = []
+        self.vtk_points = vtk.vtkPoints()
+        self.vtk_points.SetDataTypeToDouble()
+        self.vertex_cell_array = vtk.vtkCellArray()
+        self.poly_data = vtk.vtkPolyData()
 
     # Creates a vtkPoints with RenderAsSpheresOn on a selected point and returns point coordinates as a tuple
     def OnRightButtonDown(self):
@@ -198,27 +214,16 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())  # vtkPointPicker
         picked = picker.GetPickPosition()  # vtkPointPicker
         print("vtkPointPicker picked: ", picked)
+        self.vertices.append(picked)
+        point_id = [0]
+        point_id[0] = self.vtk_points.InsertNextPoint(*picked)
+        self.vertex_cell_array.InsertNextCell(1, point_id)
+        print(self.vtk_points)
+        self.poly_data.SetPoints(self.vtk_points)
+        self.poly_data.SetVerts(self.vertex_cell_array) # Required for mapper
 
-        picked_point = vtk.vtkPoints()
-        picked_point.SetDataTypeToDouble()
-        picked_point.InsertNextPoint(*picked)
-        vertices = vtk.vtkCellArray()
-        vertices.InsertNextCell(1, [0])
 
-        point_data = vtk.vtkPolyData()
-        point_data.SetPoints(picked_point)
-        point_data.SetVerts(vertices)
-
-        pointMapper = vtk.vtkPolyDataMapper()
-        pointMapper.SetInputData(point_data)
-        pointActor = vtk.vtkActor()
-        pointActor.SetMapper(pointMapper)
-        # TODO: Set properties?
-        pointActor.GetProperty().SetColor(self.select_color)
-        pointActor.GetProperty().SetPointSize(10)
-        pointActor.GetProperty().RenderPointsAsSpheresOn()
-        pointActor.PickableOff()
-
+        """
         # draw lines between points
         if self.lastPickedActor:
             picked_point.InsertNextPoint(self.lastPickedActor.GetMapper().GetInput().GetPoint(0))
@@ -246,24 +251,25 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         # TODO: remove points on dump? reopening t2g removes points
         #       points can't be removed from selection
         #       GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
-        self.GetCurrentRenderer().AddActor(pointActor)
-        self.GetCurrentRenderer().GetRenderWindow().Render()
         self.lastPickedActor = pointActor
-
+        """
+        self.draw()
         return picked
 
-        # vtkCellPicker test
-        # picker = vtk.vtkCellPicker()
-        # picker.SetTolerance(10000)
-        # picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
-        # picked = picker.GetCellId()
-        # print("vtkCellPicker picked: ", picked)
-
-        # vtkPropPicker test
-        # picker = vtk.vtkPropPicker()
-        # picker.PickProp(clickPos[0], clickPos[1], self.GetCurrentRenderer())
-        # picked = picker.GetViewProp()
-        # print("Picked: ", picked)
+    def draw(self):
+        pointMapper = vtk.vtkPolyDataMapper()
+        pointMapper.SetInputData(self.poly_data)
+        print(self.poly_data)
+        pointActor = vtk.vtkActor()
+        pointActor.SetMapper(pointMapper)
+        # TODO: Set properties?
+        pointActor.GetProperty().SetColor(self.select_color)
+        pointActor.GetProperty().SetPointSize(10)
+        pointActor.GetProperty().RenderPointsAsSpheresOn()
+        pointActor.PickableOff()
+        if self.GetCurrentRenderer():
+            self.GetCurrentRenderer().AddActor(pointActor)
+            self.GetCurrentRenderer().GetRenderWindow().Render()
 
     def OnRightButtonUp(self):
         pass

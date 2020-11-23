@@ -361,7 +361,7 @@ class Tachy2Gis:
         #         update_renderer(layer.layer())
 
     def update_renderer(self):
-        self.vtk_widget.refresh_content(self.dlg.sourceLayerComboBox.currentLayer())
+        self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -486,6 +486,7 @@ class Tachy2Gis:
             self.dlg = Tachy2GisDialog()
             self.render_container_layout = QVBoxLayout()
             self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
+            self.vtk_widget.refresh_content()
         self.setupControls()
         self.availability_watchdog.start()
         self.tachyReader.start()
