@@ -36,14 +36,15 @@ except ConnectionRefusedError:
 import os
 import gc
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
-from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout
-from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt
+from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout, QLineEdit
+from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt, QEvent, QObject
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
 from qgis.core import QgsMapLayerProxyModel, QgsProject
 from qgis.gui import QgsMapToolPan
 
 import vtk
+from PyQt5 import QtCore, QtWidgets
 
 from .T2G.VertexList import T2G_VertexList, T2G_Vertex
 from .T2G.TachyReader import TachyReader, AvailabilityWatchdog
@@ -78,6 +79,59 @@ def make_axes_actor(scale, xyzLabels):
 class Tachy2Gis:
     """QGIS Plugin Implementation."""
     # Custom methods go here:
+
+    ## Constructor
+    #  @param iface An interface instance that will be passed to this class
+    #  which provides the hook by which you can manipulate the QGIS
+    #  application at run time.
+    def __init__(self, iface):
+        # Save reference to the QGIS interface
+        self.iface = iface
+        self.dlg = Tachy2GisDialog()
+        self.render_container_layout = QVBoxLayout()
+        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
+        # initialize plugin directory
+        self.plugin_dir = os.path.dirname(__file__)
+        # initialize locale
+        locale = QSettings().value('locale/userLocale')[0:2]
+        locale_path = os.path.join(
+            self.plugin_dir,
+            'i18n',
+            'Tachy2Gis_{}.qm'.format(locale))
+
+        if os.path.exists(locale_path):
+            self.translator = QTranslator()
+            self.translator.load(locale_path)
+
+            if qVersion() > '4.3.3':
+                QCoreApplication.installTranslator(self.translator)
+
+        # Declare instance attributes
+        self.actions = []
+        self.menu = self.tr('&Tachy2GIS')
+        # remove empty toolbar
+        # self.toolbar = self.iface.addToolBar('Tachy2Gis')
+        # self.toolbar.setObjectName('Tachy2Gis')
+
+        # From here: Own additions
+        self.vertexList = T2G_VertexList()
+        self.extent_provider = ExtentProvider(self.vertexList, self.iface.mapCanvas())
+        self.auto_zoomer = AutoZoomer(self.iface.mapCanvas(), self.extent_provider)
+
+        self.mapTool = T2G_VertexePickerTool(self)
+        self.previousTool = None
+        self.fieldDialog = FieldDialog(self.iface.activeLayer())
+        self.tachyReader = TachyReader(QSerialPort.Baud9600)
+        self.availability_watchdog = AvailabilityWatchdog()
+        self.availability_watchdog.start()
+        # self.pollingThread = QThread()
+        # self.tachyReader.moveToThread(self.pollingThread)
+        # self.pollingThread.start()
+        self.tachyReader.lineReceived.connect(self.vertexReceived)
+        # self.tachyReader.beginListening()
+        self.pluginIsActive = False
+        # self.dlg = None
+        self.eventFilter = LineEditClicked()
 
     NO_PORT = 'Select tachymeter USB port'
 
@@ -132,10 +186,12 @@ class Tachy2Gis:
         # self.vertexList.layoutChanged.disconnect()
         self.fieldDialog.buttonBox.accepted.disconnect()
         self.dlg.zoomResetButton.clicked.disconnect()
+        self.dlg.setRefHeight.removeEventFilter(self.eventFilter)
         self.availability_watchdog.serial_available.disconnect()
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
         self.restoreTool()
+        self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
 
@@ -200,6 +256,7 @@ class Tachy2Gis:
         self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
 
     # TODO: Progress bar
+    #       InsertNextPoint truncates x and y coordinate (32565838.0, 5933518.5, 2.063523530960083)
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
     def loadPointCloud(self):
         cloudFileName = QFileDialog.getOpenFileName(None,
@@ -207,23 +264,31 @@ class Tachy2Gis:
                                                     QgsProject.instance().homePath(),
                                                     'XYZRGB (*.xyz);;Text (*.txt)',
                                                     '*.xyz;;*.txt')[0]
+        if cloudFileName == '':
+            return
         cellIndex = 0
         points = vtk.vtkPoints()
+        points.SetDataTypeToDouble()
         cells = vtk.vtkCellArray()
+        colors = vtk.vtkUnsignedCharArray()
+        colors.SetNumberOfComponents(3)
         with open(cloudFileName, 'r', encoding="utf-8-sig") as file:
             for line in file:
                 split = line.split()
-                points.InsertNextPoint(float(split[0]), float(split[1]), float(split[2]))
-                cells.InsertNextCell(1, [cellIndex])
+                pid = points.InsertNextPoint((float(split[0]), float(split[1]), float(split[2])))
+                cells.InsertNextCell(1, [pid])
+                colors.InsertTuple3(cellIndex, int(split[3]), int(split[4]), int(split[5]))
                 cellIndex += 1
         polyData = vtk.vtkPolyData()
         polyData.SetPoints(points)
         polyData.SetVerts(cells)
+        polyData.GetPointData().SetScalars(colors)
         pointMapper = vtk.vtkPolyDataMapper()
         pointMapper.SetInputData(polyData)
+        pointMapper.Update()
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
-        pointActor.GetProperty().SetColor(float(split[3]), float(split[4]), float(split[5]))
+        # pointActor.GetProperty().SetColor(float(split[3]), float(split[4]), float(split[5]))
         self.vtk_widget.renderer.AddActor(pointActor)
 
     # Interface code goes here:
@@ -297,58 +362,6 @@ class Tachy2Gis:
 
     def update_renderer(self):
         self.vtk_widget.refresh_content(self.dlg.sourceLayerComboBox.currentLayer())
-
-    ## Constructor
-    #  @param iface An interface instance that will be passed to this class
-    #  which provides the hook by which you can manipulate the QGIS
-    #  application at run time.
-    def __init__(self, iface):
-        # Save reference to the QGIS interface
-        self.iface = iface
-        self.dlg = Tachy2GisDialog()
-        self.render_container_layout = QVBoxLayout()
-        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
-        # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
-        # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'Tachy2Gis_{}.qm'.format(locale))
-
-        if os.path.exists(locale_path):
-            self.translator = QTranslator()
-            self.translator.load(locale_path)
-
-            if qVersion() > '4.3.3':
-                QCoreApplication.installTranslator(self.translator)
-
-        # Declare instance attributes
-        self.actions = []
-        self.menu = self.tr('&Tachy2GIS')
-        # remove empty toolbar
-        # self.toolbar = self.iface.addToolBar('Tachy2Gis')
-        # self.toolbar.setObjectName('Tachy2Gis')
-        
-        # From here: Own additions
-        self.vertexList = T2G_VertexList()
-        self.extent_provider = ExtentProvider(self.vertexList, self.iface.mapCanvas())
-        self.auto_zoomer = AutoZoomer(self.iface.mapCanvas(), self.extent_provider)
-
-        self.mapTool = T2G_VertexePickerTool(self)
-        self.previousTool = None
-        self.fieldDialog = FieldDialog(self.iface.activeLayer())
-        self.tachyReader = TachyReader(QSerialPort.Baud9600)
-        self.availability_watchdog = AvailabilityWatchdog()
-        self.availability_watchdog.start()
-        # self.pollingThread = QThread()
-        # self.tachyReader.moveToThread(self.pollingThread)
-        # self.pollingThread.start()
-        self.tachyReader.lineReceived.connect(self.vertexReceived)
-        # self.tachyReader.beginListening()
-        self.pluginIsActive = False
-        self.dlg = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -482,5 +495,20 @@ class Tachy2Gis:
         self.mapTool.alive = True
         self.setActiveLayer()
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
+        self.dlg.setRefHeight.installEventFilter(self.eventFilter)
         self.dlg.show()
-        self.tachyReader.hook_up()
+        # Tries to connect to tachy and also starts the tachymeter if it's off
+        # self.tachyReader.hook_up()
+
+
+class LineEditClicked(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.MouseButtonPress:
+            self.mousePressEvent()
+            return True
+        else:
+            return super().eventFilter(obj, event)
+
+    # TODO: Stop pollingTimer in TachyReader and start again on returnPressed signal
+    def mousePressEvent(self):
+        print("Clicked!")

@@ -172,6 +172,7 @@ class VtkWidget(QVTKRenderWindowInteractor):
 
 # TODO: Snapping visualization
 #       show coordinates in widget 'coords' OnMouseMove
+#       use only one vtkPoints object
 class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def __init__(self, parent=None):
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
@@ -199,6 +200,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         print("vtkPointPicker picked: ", picked)
 
         picked_point = vtk.vtkPoints()
+        picked_point.SetDataTypeToDouble()
         picked_point.InsertNextPoint(*picked)
         vertices = vtk.vtkCellArray()
         vertices.InsertNextCell(1, [0])
