@@ -196,10 +196,19 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.lastPickedActor = None
         self.lastPickedProperty = vtk.vtkProperty()
         self.vertices = []
+        self.select_index = -1
+
         self.vtk_points = vtk.vtkPoints()
         self.vtk_points.SetDataTypeToDouble()
         self.vertex_cell_array = vtk.vtkCellArray()
         self.poly_data = vtk.vtkPolyData()
+
+        self.vertices_actor = vtk.vtkActor()
+        self.selected_vertex_actor = vtk.vtkActor()
+        self.poly_line_actor = vtk.vtkActor()
+        self.actors = [self.vertices_actor,
+                       self.selected_vertex_actor,
+                       self.poly_line_actor]
 
     # Creates a vtkPoints with RenderAsSpheresOn on a selected point and returns point coordinates as a tuple
     def OnRightButtonDown(self):
@@ -217,6 +226,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         picked = picker.GetPickPosition()
         print("vtkPointPicker picked: ", picked)
         self.vertices.append(picked)
+        # move this to draw logic
         point_id = [0]
         point_id[0] = self.vtk_points.InsertNextPoint(*picked)
         self.vertex_cell_array.InsertNextCell(1, point_id)
@@ -259,6 +269,12 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         return picked
 
     def draw(self):
+        for actor in self.actors:
+            self.GetCurrentRenderer().RemoveActor(actor)
+        # put all self.vertices into vertex_actor
+        # buid poly_line from vertices
+        # add selected point actor (and make it slightly bigger)
+        # add all of them to the renderer
         pointMapper = vtk.vtkPolyDataMapper()
         pointMapper.SetInputData(self.poly_data)
         print(self.poly_data)
