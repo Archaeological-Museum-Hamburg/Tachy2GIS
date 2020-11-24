@@ -25,7 +25,6 @@ class VtkGeometry:
     MULTIPOINTZ = 1004
     MULTIPOINTZM = 3004
 
-
 class AnchorUpdater(QObject):
     # The thread uses signals to communicate its progress to the AnchorUpdateDialog
     signalGeometriesProgress = pyqtSignal(int)
@@ -132,7 +131,7 @@ class VtkAnchorUpdater(AnchorUpdater):
     poly_data = None
     anchors = None
 
-    def startExtraction(self, wkbType):
+    def startExtraction(self):
         if self.wkbType == VtkGeometry.MULTIPOLYGONZM or self.wkbType == VtkGeometry.MULTIPOLYGONZ:
             geometries = list([feature.geometry() for feature in self.layer.getFeatures()])
             self.signalAnchorCount.emit(len(geometries))

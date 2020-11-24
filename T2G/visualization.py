@@ -128,6 +128,8 @@ class VtkPolyLayer(VtkLayer):
 class VtkWidget(QVTKRenderWindowInteractor):
     def __init__(self, widget):
         self.renderer = vtk.vtkRenderer()
+        self.axes = vtk.vtkAxesActor()
+        self.axes.PickableOff()
         self.colour_provider = ColourProvider()
         super().__init__(widget)
         self.GetRenderWindow().AddRenderer(self.renderer)
@@ -211,8 +213,8 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         picker = vtk.vtkPointPicker()
         # TODO: Set tolerance in GUI?
         picker.SetTolerance(1000)
-        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())  # vtkPointPicker
-        picked = picker.GetPickPosition()  # vtkPointPicker
+        picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
+        picked = picker.GetPickPosition()
         print("vtkPointPicker picked: ", picked)
         self.vertices.append(picked)
         point_id = [0]
@@ -220,7 +222,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.vertex_cell_array.InsertNextCell(1, point_id)
         print(self.vtk_points)
         self.poly_data.SetPoints(self.vtk_points)
-        self.poly_data.SetVerts(self.vertex_cell_array) # Required for mapper
+        self.poly_data.SetVerts(self.vertex_cell_array)  # Required for mapper
 
 
         """

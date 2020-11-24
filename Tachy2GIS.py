@@ -256,7 +256,6 @@ class Tachy2Gis:
         self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
 
     # TODO: Progress bar
-    #       InsertNextPoint truncates x and y coordinate (32565838.0, 5933518.5, 2.063523530960083)
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
     def loadPointCloud(self):
         cloudFileName = QFileDialog.getOpenFileName(None,
@@ -340,6 +339,15 @@ class Tachy2Gis:
         self.render_container_layout.addWidget(self.vtk_widget)
         self.dlg.vtk_frame.setLayout(self.render_container_layout)
         self.vtk_widget.SetInteractorStyle(VtkMouseInteractorStyle())
+
+        # Setup axes
+        self.markerWidget = vtk.vtkOrientationMarkerWidget()
+        self.markerWidget.SetOrientationMarker(self.vtk_widget.axes)
+        self.markerWidget.SetInteractor(self.vtk_widget.renderer.GetRenderWindow().GetInteractor())
+        self.markerWidget.SetViewport(0.0, 0.0, 0.1, 0.3)
+        self.markerWidget.EnabledOn()
+        self.markerWidget.InteractiveOff()
+
         self.vtk_widget.Initialize()
         self.vtk_widget.Start()
 
@@ -475,6 +483,9 @@ class Tachy2Gis:
         # remove the toolbar
         # del self.toolbarminec
 
+    def getTachyReader(self):
+        return self.tachyReader
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -497,6 +508,7 @@ class Tachy2Gis:
         self.setActiveLayer()
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
         self.dlg.setRefHeight.installEventFilter(self.eventFilter)
+        dir(self.dlg.sourceLayerComboBox)
         self.dlg.show()
         # Tries to connect to tachy and also starts the tachymeter if it's off
         # self.tachyReader.hook_up()
