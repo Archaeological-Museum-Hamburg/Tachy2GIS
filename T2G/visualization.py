@@ -176,8 +176,6 @@ class VtkWidget(QVTKRenderWindowInteractor):
                 self.renderer.AddActor(pointActor)
         self.refresh_content()
 
-
-    # TODO: PointClouds, vtk.vtkLineSource/vtkPolyLine, vtk.vtkPoints visualization
     def refresh_content(self):
         # The mapper is responsible for pushing the geometry into the graphics
         # library. It may also do color mapping, if scalars or other
@@ -236,12 +234,16 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         clickPos = self.GetInteractor().GetEventPosition()
         print("Click pos: ", clickPos)
         picker = vtk.vtkPointPicker()
-        picker.SetTolerance(1000)
+        picker.SetTolerance(100)
         picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
         picked = picker.GetPickPosition()
+        picked_actor = picker.GetActor()
         print("vtkPointPicker picked: ", picked)
         if picked in self.vertices:
             print("Vertex already in list!")
+            return
+        # return if selection is not an actor
+        if picked_actor is None:
             return
         self.vertices.append(picked)
         self.draw()
@@ -319,6 +321,12 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
                 p = self.vtk_points.GetPoint(i)
                 newVtkPoints.InsertNextPoint(p)
         self.vtk_points.DeepCopy(newVtkPoints)
+
+    def removeAllVertices(self):
+        for actor in self.actors:
+            self.GetCurrentRenderer().RemoveActor(actor)
+        self.__init__()
+        self.GetCurrentRenderer().GetRenderWindow().Render()
 
     def OnRightButtonUp(self):
         pass

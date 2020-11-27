@@ -114,12 +114,18 @@ class AnchorUpdater(QObject):
 def unpack_multi_polygons(geometries):
     unpacked = []
     for geo in geometries:
-        if geo.asWkt().startswith('MultiPolygonZ'):
+        if geo.asWkt().startswith('MultiPolygon'):
             coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
             unpacked += coordinates[0]
             if len(coordinates) > 1:
-                for i in range(len(coordinates)):
+                for i in range(1, len(coordinates)):
                     unpacked += coordinates[i]
+        elif geo.asWkt().startswith('MultiLine'):
+            coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
+            unpacked.append(coordinates[0])
+            if len(coordinates) > 1:
+                for i in range(1, len(coordinates)):
+                    unpacked.append(coordinates[i])
         else:
             unpacked.append(list(geo.vertices()))
     return unpacked
@@ -165,43 +171,32 @@ class VtkAnchorUpdater(AnchorUpdater):
             self.anchors = self.layer_cache[active_layer_id]['anchors']
             self.polies = self.poly_data.GetPolys()
 
-        # TODO: unpack_multi_lines
         if self.geoType == QgsWkbTypes.LineGeometry:
             geometries = list([feature.geometry() for feature in self.layer.getFeatures()])
             self.signalAnchorCount.emit(len(geometries))
             active_layer_id = self.layer.id()
             if active_layer_id not in self.layer_cache.keys():
                 linePoints = vtk.vtkPoints()
-                polyLine = vtk.vtkPolyLine()
                 cells = vtk.vtkCellArray()
                 geometries = unpack_multi_polygons(geometries)
+                index = 0
                 for geometry in geometries:
-                    polyLine.GetPointIds().SetNumberOfIds(len(geometries))
-                    for i in range(0, len(geometries)):
-                        polyLine.GetPointIds().SetId(i, i)
+                    polyLine = vtk.vtkPolyLine()
                     for vertex in geometry:
-                        linePoints.InsertNextPoint(vertex.x(), vertex.y(), vertex.z())
+                        polyLine.GetPointIds().InsertNextId(index)
+                        linePoints.InsertNextPoint(*vertex)
+                        index += 1
                     cells.InsertNextCell(polyLine)
 
                 polyData = vtk.vtkPolyData()
                 polyData.SetPoints(linePoints)
                 polyData.SetLines(cells)
 
-                # TODO: remove and only return polyData?
-                # lineMapper = vtk.vtkPolyDataMapper()
-                # lineMapper.SetInputData(polyData)
-                # lineActor = vtk.vtkActor()
-                # lineActor.SetMapper(lineMapper)
-                # lineActor.PickableOff()
-                # lineActor.GetProperty().SetColor(1.0, 0.0, 0.0)
-                # lineActor.GetProperty().SetLineWidth(3)
-
                 self.layer_cache[active_layer_id] = {'poly_data': polyData, 'anchors': linePoints}
             print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']
 
-        # TODO: unpack_multi_points
         if self.geoType == QgsWkbTypes.PointGeometry:
             geometries = list([feature.geometry() for feature in self.layer.getFeatures()])
             self.signalAnchorCount.emit(len(geometries))
@@ -212,7 +207,6 @@ class VtkAnchorUpdater(AnchorUpdater):
                 geometries = unpack_multi_polygons(geometries)
                 for geometry in geometries:
                     for vertex in geometry:
-                        print(vertex)
                         pid = points.InsertNextPoint(vertex.x(), vertex.y(), vertex.z())
                         v_cells.InsertNextCell(1, [pid])
 

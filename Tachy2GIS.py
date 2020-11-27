@@ -35,6 +35,7 @@ except ConnectionRefusedError:
 """
 import os
 import gc
+import ntpath
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout, QLineEdit
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt, QEvent, QObject
@@ -255,7 +256,7 @@ class Tachy2Gis:
     def getRefHeight(self):
         self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
 
-    # TODO: Progress bar
+    # TODO: Progress bar, remove layers from sourceLayerComboBox
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
     def loadPointCloud(self):
         cloudFileName = QFileDialog.getOpenFileName(None,
@@ -287,7 +288,10 @@ class Tachy2Gis:
         pointMapper.Update()
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
-        # pointActor.GetProperty().SetColor(float(split[3]), float(split[4]), float(split[5]))
+        self.vtk_widget.layers[ntpath.basename(cloudFileName)] = pointActor
+        addItems = self.dlg.sourceLayerComboBox.additionalItems()
+        addItems.append(" ⛅   " + ntpath.basename(cloudFileName))
+        self.dlg.sourceLayerComboBox.setAdditionalItems(addItems)
         self.vtk_widget.renderer.AddActor(pointActor)
 
     # Interface code goes here:
@@ -303,7 +307,7 @@ class Tachy2Gis:
         self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking/dragging
 
         # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
-        #self.dlg.finished.connect(self.mapTool.clear)
+        # self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
         self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         self.dlg.loadPointCloud.clicked.connect(self.loadPointCloud)
