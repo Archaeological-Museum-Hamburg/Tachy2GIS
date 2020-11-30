@@ -35,7 +35,6 @@ except ConnectionRefusedError:
 """
 import os
 import gc
-import ntpath
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
 from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout, QLineEdit
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt, QEvent, QObject
@@ -288,11 +287,37 @@ class Tachy2Gis:
         pointMapper.Update()
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
-        self.vtk_widget.layers[ntpath.basename(cloudFileName)] = pointActor
+        pointActor.PickableOff()
+        self.vtk_widget.layers[os.path.basename(cloudFileName)] = pointActor
         addItems = self.dlg.sourceLayerComboBox.additionalItems()
-        addItems.append(" ⛅   " + ntpath.basename(cloudFileName))
+        addItems.append(" ⛅   " + os.path.basename(cloudFileName))
         self.dlg.sourceLayerComboBox.setAdditionalItems(addItems)
         self.vtk_widget.renderer.AddActor(pointActor)
+
+    def setPickable(self):
+        currentLayer = self.dlg.sourceLayerComboBox.currentLayer()
+        if currentLayer is None:
+            currentLayer = self.dlg.sourceLayerComboBox.additionalItems()
+        for ids, polyLayer in self.vtk_widget.layers.items():
+            if type(currentLayer) == list:
+                if " ⛅   "+ids in currentLayer:
+                    polyLayer.PickableOn()
+                continue
+            if isinstance(polyLayer, vtk.vtkActor):
+                polyLayer.PickableOff()
+                continue
+            if not str(ids) == currentLayer.id():
+                if type(polyLayer.vtkActor) == tuple:
+                    for actor in polyLayer.vtkActor:
+                        actor.PickableOff()
+                else:
+                    polyLayer.vtkActor.PickableOff()
+            else:
+                if type(polyLayer.vtkActor) == tuple:
+                    for actor in polyLayer.vtkActor:
+                        actor.PickableOn()
+                else:
+                    polyLayer.vtkActor.PickableOn()
 
     # Interface code goes here:
     def setupControls(self):
@@ -321,6 +346,7 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setActiveLayer)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
+        self.dlg.sourceLayerComboBox.layerChanged.connect(self.setPickable)
 
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
         # self.vertexList.layoutChanged.connect(self.dumpEnabled)
@@ -486,9 +512,6 @@ class Tachy2Gis:
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         # del self.toolbarminec
-
-    def getTachyReader(self):
-        return self.tachyReader
 
     def run(self):
         """Run method that performs all the real work"""

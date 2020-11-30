@@ -67,6 +67,8 @@ class VtkLayer:
 
 
 class VtkPolyLayer(VtkLayer):
+    vtkActor = None
+
     def make_wkt(self, vertices):
         # wkt requires the first vertex to coincide with the last:
         if len(vertices) < 3 and vertices[-1] != vertices[0]:
@@ -122,6 +124,7 @@ class VtkPolyLayer(VtkLayer):
             actor.SetMapper(poly_mapper)
             actor.GetProperty().SetColor(colour)
 
+            self.vtkActor = actor, edgeActor
             return actor, edgeActor
 
         if self.geoType == QgsWkbTypes.LineGeometry:
@@ -132,6 +135,7 @@ class VtkPolyLayer(VtkLayer):
             lineActor.GetProperty().SetColor(colour)
             lineActor.GetProperty().SetLineWidth(3)
 
+            self.vtkActor = lineActor
             return lineActor
 
         if self.geoType == QgsWkbTypes.PointGeometry:
@@ -142,6 +146,8 @@ class VtkPolyLayer(VtkLayer):
             pointActor.GetProperty().SetPointSize(5)
             pointActor.GetProperty().RenderPointsAsSpheresOn()
             pointActor.GetProperty().SetColor(colour)
+
+            self.vtkActor = pointActor
             return pointActor
 
 
