@@ -309,7 +309,6 @@ class Tachy2Gis:
         # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         # self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
-        self.dlg.deleteVertexButton.clicked.connect(self.mapTool.deleteVertex)
         self.dlg.loadPointCloud.clicked.connect(self.loadPointCloud)
 
         # self.dlg.vertexTableView.setModel(self.vertexList)
@@ -342,8 +341,11 @@ class Tachy2Gis:
         self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.render_container_layout.addWidget(self.vtk_widget)
         self.dlg.vtk_frame.setLayout(self.render_container_layout)
-        self.vtk_widget.SetInteractorStyle(VtkMouseInteractorStyle())
-
+        # The interactorStyle is instanciated explicitely so it can be connected to
+        # events
+        self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
+        self.vtk_widget.SetInteractorStyle(self.vtk_mouse_interactor_style)
+        self.dlg.deleteVertexButton.clicked.connect(self.vtk_mouse_interactor_style.remove_selected)
         # Setup axes
         self.markerWidget = vtk.vtkOrientationMarkerWidget()
         self.markerWidget.SetOrientationMarker(self.vtk_widget.axes)
