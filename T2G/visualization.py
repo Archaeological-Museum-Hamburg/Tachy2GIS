@@ -222,10 +222,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.vertices = []
         self.select_index = -1
 
-        self.vtk_points = vtk.vtkPoints()
-        self.vtk_points.SetDataTypeToDouble()
-        self.vertex_cell_array = vtk.vtkCellArray()
-        self.poly_data = vtk.vtkPolyData()
+        self.initialize_geometry_info()
 
         self.vertices_actor = vtk.vtkActor()
         self.selected_vertex_actor = vtk.vtkActor()
@@ -233,6 +230,12 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.actors = [self.vertices_actor,
                        self.selected_vertex_actor,
                        self.poly_line_actor]
+
+    def initialize_geometry_info(self):
+        self.vtk_points = vtk.vtkPoints()
+        self.vtk_points.SetDataTypeToDouble()
+        self.vertex_cell_array = vtk.vtkCellArray()
+        self.poly_data = vtk.vtkPolyData()
 
     # Creates a vtkPoints with RenderAsSpheresOn on a selected point and appends point coordinates to self.vertices
     # TODO: GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
@@ -251,7 +254,9 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         # return if selection is not an actor
         if picked_actor is None:
             return
+        print(len(self.vertices))
         self.vertices.append(picked)
+        print(len(self.vertices))
         self.draw()
 
     def draw(self):
@@ -261,9 +266,11 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         # build poly_line from vertices
         # add selected point actor (and make it slightly bigger)
         # add all of them to the renderer
-        pid = self.vtk_points.InsertNextPoint(self.vertices[-1])
+        self.initialize_geometry_info()
+        for vertex in self.vertices:
+            pid = self.vtk_points.InsertNextPoint(vertex)
+            self.vertex_cell_array.InsertNextCell(1, [pid])
         self.vtk_points.Modified()
-        self.vertex_cell_array.InsertNextCell(1, [pid])
         self.poly_data.SetPoints(self.vtk_points)
         self.poly_data.SetVerts(self.vertex_cell_array)
         pointMapper = vtk.vtkPolyDataMapper()
@@ -275,10 +282,10 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         self.vertices_actor.PickableOff()
 
         # Create polylines from self.vtk_points if there is more than one vertex
-        if len(self.vertices) > 1:
+        if len(self.vertices):
             polyLine = vtk.vtkPolyLine()
             polyLine.GetPointIds().SetNumberOfIds(len(self.vertices))
-            for i in range(0, len(self.vertices)):
+            for i in range(len(self.vertices)):
                 polyLine.GetPointIds().SetId(i, i)
             cells = vtk.vtkCellArray()
             cells.InsertNextCell(polyLine)
@@ -295,21 +302,22 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             self.poly_line_actor.PickableOff()
 
         # Create bigger, self.select_color selection point
-        selected = vtk.vtkPoints()
-        selected.SetDataTypeToDouble()
-        selected.InsertNextPoint(self.vertices[-1])
-        selected_cells = vtk.vtkCellArray()
-        selected_cells.InsertNextCell(1, [0])
-        selected_poly_data = vtk.vtkPolyData()
-        selected_poly_data.SetPoints(selected)
-        selected_poly_data.SetVerts(selected_cells)
-        selected_mapper = vtk.vtkPolyDataMapper()
-        selected_mapper.SetInputData(selected_poly_data)
-        self.selected_vertex_actor.SetMapper(selected_mapper)
-        self.selected_vertex_actor.GetProperty().SetColor(self.select_color)
-        self.selected_vertex_actor.GetProperty().SetPointSize(15)
-        self.selected_vertex_actor.GetProperty().RenderPointsAsSpheresOn()
-        self.selected_vertex_actor.PickableOff()
+        if self.vertices:
+            selected = vtk.vtkPoints()
+            selected.SetDataTypeToDouble()
+            selected.InsertNextPoint(self.vertices[self.select_index])
+            selected_cells = vtk.vtkCellArray()
+            selected_cells.InsertNextCell(1, [0])
+            selected_poly_data = vtk.vtkPolyData()
+            selected_poly_data.SetPoints(selected)
+            selected_poly_data.SetVerts(selected_cells)
+            selected_mapper = vtk.vtkPolyDataMapper()
+            selected_mapper.SetInputData(selected_poly_data)
+            self.selected_vertex_actor.SetMapper(selected_mapper)
+            self.selected_vertex_actor.GetProperty().SetColor(self.select_color)
+            self.selected_vertex_actor.GetProperty().SetPointSize(15)
+            self.selected_vertex_actor.GetProperty().RenderPointsAsSpheresOn()
+            self.selected_vertex_actor.PickableOff()
 
         if self.GetCurrentRenderer():
             self.GetCurrentRenderer().AddActor(self.selected_vertex_actor)
@@ -317,22 +325,29 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             self.GetCurrentRenderer().AddActor(self.poly_line_actor)
             self.GetCurrentRenderer().GetRenderWindow().Render()
 
+    def set_selection(self, index):
+        # With the changes in draw, this can be used as a receiver for a selection_changed
+        # event of a vertex list widget
+        self.select_index = index
+        self.draw()
+
     # Remove vertex from self.vertices and self.vtk_points
-    def removeVertex(self, pidx):
-        self.vertices.pop(pidx)
-        newVtkPoints = vtk.vtkPoints()
-        newVtkPoints.SetDataTypeToDouble()
-        for i in range(0, self.vtk_points.GetNumberOfPoints()):
-            if i != pidx:
-                p = self.vtk_points.GetPoint(i)
-                newVtkPoints.InsertNextPoint(p)
-        self.vtk_points.DeepCopy(newVtkPoints)
+    def remove_selected(self):
+        if self.vertices:
+            # No idea how this happens, but it looks like the vertex list gets reversed in some other
+            # step. Without reversing it before removing a vertex, the index '-1' deletes the first element.
+            # '.pop' behaves the same way.
+            # working with the select_index allows to work with a wdget that allows selection of vertices.
+
+            self.vertices.reverse()
+            del self.vertices[self.select_index]
+            self.vertices.reverse()
+            self.select_index = -1
+            self.draw()
 
     def removeAllVertices(self):
-        for actor in self.actors:
-            self.GetCurrentRenderer().RemoveActor(actor)
-        self.__init__()
-        self.GetCurrentRenderer().GetRenderWindow().Render()
+        self.vertices = []
+        self.draw()
 
     def OnRightButtonUp(self):
         pass
