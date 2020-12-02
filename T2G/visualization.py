@@ -341,6 +341,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             if actor is None:
                 continue
             self.GetCurrentRenderer().RemoveActor(actor)
+            actor.SetMapper(None)
         # put all self.vertices into vertex_actor
         # build poly_line from vertices
         # add selected point actor (and make it slightly bigger)

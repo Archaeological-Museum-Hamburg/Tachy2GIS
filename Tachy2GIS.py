@@ -40,7 +40,7 @@ from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePol
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt, QEvent, QObject
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
-from qgis.core import QgsMapLayerProxyModel, QgsProject
+from qgis.core import QgsMapLayerProxyModel, QgsProject, QgsMapLayerType, QgsWkbTypes, QgsLayerTreeGroup, QgsLayerTreeLayer
 from qgis.gui import QgsMapToolPan
 
 import vtk
@@ -194,6 +194,7 @@ class Tachy2Gis:
         self.tachyReader.shutDown()
         self.restoreTool()
         self.mapTool.clear()
+        self.disconnectVisibilityChanged()
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -393,10 +394,10 @@ class Tachy2Gis:
 
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         self.vertexList.signal_anchors_updated.connect(self.update_renderer)
-
-        # # TODO: Implement
-        # # Connect QGIS signals
-        # QgsProject.instance().layersAdded.connect(connectAddedLayer)  # Which connects visibilityChanged
+        # Connect signals for existing layers
+        self.connectVisibilityChanged()
+        # Connect visibilityChanged signal for added layers
+        QgsProject.instance().layersAdded.connect(self.connectVisibilityChanged)
         # QgsProject.instance().layersAdded.connect(update_renderer)
         # QgsProject.instance().layersRemoved.connect(disconnectLayer)
         # QgsProject.instance().layersRemoved.connect(removeVtkLayer)
@@ -408,10 +409,63 @@ class Tachy2Gis:
         #         pass
         #         update_renderer(layer.layer())
 
+    def disconnectVisibilityChanged(self):
+        for child in QgsProject.instance().layerTreeRoot().children():
+            if isinstance(child, QgsLayerTreeGroup):
+                for node in child.children():
+                    if node.layer().type() == QgsMapLayerType.RasterLayer:
+                        continue
+                    if node.layer().geometryType() == QgsWkbTypes.NullGeometry:
+                        continue
+                    node.visibilityChanged.disconnect()
+            if isinstance(child, QgsLayerTreeLayer):
+                if child.layer().type() == QgsMapLayerType.RasterLayer:
+                    continue
+                if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
+                    continue
+                for node in child:
+                    node.visibilityChanged.disconnect()
+
+    def connectVisibilityChanged(self):
+        for child in QgsProject.instance().layerTreeRoot().children():
+            if isinstance(child, QgsLayerTreeGroup):
+                for node in child.children():
+                    if node.layer().type() == QgsMapLayerType.RasterLayer:
+                        continue
+                    if node.layer().geometryType() == QgsWkbTypes.NullGeometry:
+                        continue
+                    if node.receivers(node.visibilityChanged) > 1:  # prevent connecting multiple times
+                        continue
+                    node.visibilityChanged.connect(self.update_renderer)
+            if isinstance(child, QgsLayerTreeLayer):
+                if child.layer().type() == QgsMapLayerType.RasterLayer:
+                    continue
+                if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
+                    continue
+                for node in child:
+                    if node.receivers(node.visibilityChanged) > 1:
+                        continue
+                    node.visibilityChanged.connect(self.update_renderer)
+
     def update_renderer(self):
-        self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
-        for layer in QgsProject.instance().mapLayers().values():
-            self.vtk_widget.switch_layer(layer)
+        #self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
+        for layer in QgsProject.instance().layerTreeRoot().findLayers():
+            if layer.layer().type() == QgsMapLayerType.RasterLayer:
+                continue
+            if layer.layer().geometryType == QgsWkbTypes.NullGeometry:
+                continue
+            if layer.isVisible():
+                if layer.layer().id() not in self.vtk_widget.layers:
+                    self.vtk_widget.switch_layer(layer.layer())
+            else:  # remove actor from renderer and vtk_widget.layers{}
+                if type(self.vtk_widget.layers[layer.layer().id()].vtkActor) == tuple:
+                    for actor in self.vtk_widget.layers[layer.layer().id()].vtkActor:
+                        self.vtk_widget.renderer.RemoveActor(actor)
+                    self.vtk_widget.layers.pop(layer.layer().id())
+                else:
+                    self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layer.layer().id()].vtkActor)
+                    self.vtk_widget.layers.pop(layer.layer().id())
+        self.vtk_widget.refresh_content()
         self.setPickable()
 
     # noinspection PyMethodMayBeStatic
