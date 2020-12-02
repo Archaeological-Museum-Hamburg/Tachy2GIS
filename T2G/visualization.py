@@ -126,29 +126,6 @@ class VtkPolyLayer(VtkLayer):
         self.vtkActor = actor, edgeActor
         return actor, edgeActor
 
-        # if self.geoType == QgsWkbTypes.LineGeometry:
-        #     lineMapper = vtk.vtkPolyDataMapper()
-        #     lineMapper.SetInputData(poly_data)
-        #     lineActor = vtk.vtkActor()
-        #     lineActor.SetMapper(lineMapper)
-        #     lineActor.GetProperty().SetColor(colour)
-        #     lineActor.GetProperty().SetLineWidth(3)
-        #
-        #     self.vtkActor = lineActor
-        #     return lineActor
-        #
-        # if self.geoType == QgsWkbTypes.PointGeometry:
-        #     pointMapper = vtk.vtkPolyDataMapper()
-        #     pointMapper.SetInputData(poly_data)
-        #     pointActor = vtk.vtkActor()
-        #     pointActor.SetMapper(pointMapper)
-        #     pointActor.GetProperty().SetPointSize(5)
-        #     pointActor.GetProperty().RenderPointsAsSpheresOn()
-        #     pointActor.GetProperty().SetColor(colour)
-        #
-        #     self.vtkActor = pointActor
-        #     return pointActor
-
 
 class VtkLineLayer(VtkLayer):
     vtkActor = None

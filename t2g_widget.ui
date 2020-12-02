@@ -233,7 +233,10 @@
          </size>
         </property>
         <property name="toolTip">
-         <string>Aktuelle Koordinaten</string>
+         <string>Koordinaten des letzten Punktes</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
         </property>
         <property name="readOnly">
          <bool>true</bool>

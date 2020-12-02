@@ -139,6 +139,7 @@ class Tachy2Gis:
         newVtx = T2G_Vertex.fromGSI(line)
         self.mapTool.addVertex(vtx=newVtx)
         self.vtk_mouse_interactor_style.vertices.append((newVtx.x, newVtx.y, newVtx.z))
+        self.dlg.coords.setText(" ".join([str(newVtx.x), str(newVtx.y), str(newVtx.z)]))
         self.vtk_mouse_interactor_style.draw()
 
     ## Clears the map canvas and in turn the vertexList
@@ -232,7 +233,7 @@ class Tachy2Gis:
         self.tachyReader.setLogfile(logFileName)
 
     def dumpEnabled(self):
-        verticesAvailable = (len(self.vertexList) > 0)
+        verticesAvailable = (len(self.vtk_mouse_interactor_style.vertices) > 0)
         # Selecting a target layer while there are no vertices in the vertex list may cause segfaults. To avoid this,
         # the 'Dump' button is disabled as long there are none:
         self.dlg.dumpButton.setEnabled(verticesAvailable)
@@ -303,14 +304,13 @@ class Tachy2Gis:
         if currentLayer is None:
             currentLayer = self.dlg.sourceLayerComboBox.additionalItems()
         for ids, polyLayer in self.vtk_widget.layers.items():
-            print(ids)
-            if currentLayer.type() == 1:  # WMS RasterLayer
-                continue
-            if currentLayer.geometryType() == 4:  # excel sheet
-                continue
             if type(currentLayer) == list:
                 if " ⛅   "+ids in currentLayer:
                     polyLayer.PickableOn()
+                continue
+            if currentLayer.type() == QgsMapLayerType.RasterLayer:
+                continue
+            if currentLayer.geometryType() == QgsWkbTypes.NullGeometry:  # excel sheet
                 continue
             if isinstance(polyLayer, vtk.vtkActor):
                 polyLayer.PickableOff()
@@ -356,6 +356,8 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setPickable)
 
+        self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
+
         self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
         # self.vertexList.layoutChanged.connect(self.dumpEnabled)
         self.fieldDialog.buttonBox.accepted.connect(self.extent_provider.add_feature)
@@ -397,9 +399,11 @@ class Tachy2Gis:
         # Connect signals for existing layers
         self.connectVisibilityChanged()
         # Connect visibilityChanged signal for added layers
-        QgsProject.instance().layersAdded.connect(self.connectVisibilityChanged)
+        # TODO: Test - gives NoneType error when loading project
+        # QgsProject.instance().layersAdded.connect(self.connectVisibilityChanged)
         # QgsProject.instance().layersAdded.connect(update_renderer)
-        # QgsProject.instance().layersRemoved.connect(disconnectLayer)
+        # QgsProject.instance().layersRemoved.connect(self.disconnectVisibilityChanged)
+        # QgsProject.instance().layersRemoved.connect(self.update_renderer)
         # QgsProject.instance().layersRemoved.connect(removeVtkLayer)
         #
         # # Connect existing QGIS layers
@@ -458,13 +462,14 @@ class Tachy2Gis:
                 if layer.layer().id() not in self.vtk_widget.layers:
                     self.vtk_widget.switch_layer(layer.layer())
             else:  # remove actor from renderer and vtk_widget.layers{}
-                if type(self.vtk_widget.layers[layer.layer().id()].vtkActor) == tuple:
-                    for actor in self.vtk_widget.layers[layer.layer().id()].vtkActor:
-                        self.vtk_widget.renderer.RemoveActor(actor)
-                    self.vtk_widget.layers.pop(layer.layer().id())
-                else:
-                    self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layer.layer().id()].vtkActor)
-                    self.vtk_widget.layers.pop(layer.layer().id())
+                if layer.layer().id() in self.vtk_widget.layers:
+                    if type(self.vtk_widget.layers[layer.layer().id()].vtkActor) == tuple:
+                        for actor in self.vtk_widget.layers[layer.layer().id()].vtkActor:
+                            self.vtk_widget.renderer.RemoveActor(actor)
+                        self.vtk_widget.layers.pop(layer.layer().id())
+                    else:
+                        self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layer.layer().id()].vtkActor)
+                        self.vtk_widget.layers.pop(layer.layer().id())
         self.vtk_widget.refresh_content()
         self.setPickable()
 

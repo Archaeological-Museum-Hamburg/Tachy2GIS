@@ -41,6 +41,8 @@ class T2G_VertexePickerTool(QgsMapTool):
             return
         if layer is None:
             return
+        if layer.type() == QgsMapLayerType.RasterLayer:
+            return
         self.geometryType = layer.geometryType()
         geometry = self.rubberBand.asGeometry()
         self.rubberBand.reset(self.geometryType)
