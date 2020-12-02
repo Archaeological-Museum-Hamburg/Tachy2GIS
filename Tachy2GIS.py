@@ -138,6 +138,8 @@ class Tachy2Gis:
     def vertexReceived(self, line):
         newVtx = T2G_Vertex.fromGSI(line)
         self.mapTool.addVertex(vtx=newVtx)
+        self.vtk_mouse_interactor_style.vertices.append((newVtx.x, newVtx.y, newVtx.z))
+        self.vtk_mouse_interactor_style.draw()
 
     ## Clears the map canvas and in turn the vertexList
     def clearCanvas(self):
@@ -191,6 +193,7 @@ class Tachy2Gis:
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
         self.restoreTool()
+        self.mapTool.clear()
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -249,7 +252,7 @@ class Tachy2Gis:
         self.dlg.coords.setText(*coord)
 
     def setRefHeight(self):
-        refHeight = float(self.dlg.setRefHeight.text())
+        refHeight = self.dlg.setRefHeight.text()
         self.tachyReader.setReflectorHeight(refHeight)
 
     def getRefHeight(self):
@@ -299,6 +302,11 @@ class Tachy2Gis:
         if currentLayer is None:
             currentLayer = self.dlg.sourceLayerComboBox.additionalItems()
         for ids, polyLayer in self.vtk_widget.layers.items():
+            print(ids)
+            if currentLayer.type() == 1:  # WMS RasterLayer
+                continue
+            if currentLayer.geometryType() == 4:  # excel sheet
+                continue
             if type(currentLayer) == list:
                 if " ⛅   "+ids in currentLayer:
                     polyLayer.PickableOn()
@@ -306,7 +314,7 @@ class Tachy2Gis:
             if isinstance(polyLayer, vtk.vtkActor):
                 polyLayer.PickableOff()
                 continue
-            if not str(ids) == currentLayer.id():
+            if not ids == currentLayer.id():
                 if type(polyLayer.vtkActor) == tuple:
                     for actor in polyLayer.vtkActor:
                         actor.PickableOff()
@@ -402,6 +410,9 @@ class Tachy2Gis:
 
     def update_renderer(self):
         self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
+        for layer in QgsProject.instance().mapLayers().values():
+            self.vtk_widget.switch_layer(layer)
+        self.setPickable()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -537,7 +548,6 @@ class Tachy2Gis:
         self.setActiveLayer()
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
         self.dlg.setRefHeight.installEventFilter(self.eventFilter)
-        dir(self.dlg.sourceLayerComboBox)
         self.dlg.show()
         # Tries to connect to tachy and also starts the tachymeter if it's off
         # self.tachyReader.hook_up()

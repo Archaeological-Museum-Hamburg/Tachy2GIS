@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QApplication as qApp
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import iface
-from .visualization import VtkPolyLayer
+from .visualization import VtkPolyLayer, VtkLineLayer, VtkPointLayer
 
 
 from . import GSI_Parser
@@ -187,7 +187,14 @@ class T2G_VertexList(QAbstractTableModel):
             return
         self.layer = layer
         # Initializing the progress dialog
-        self.vtk_layer = VtkPolyLayer(self.layer)
+        if self.layer.geometryType() == QgsWkbTypes.PolygonGeometry:
+            self.vtk_layer = VtkPolyLayer(self.layer)
+        elif self.layer.geometryType() == QgsWkbTypes.LineGeometry:
+            self.vtk_layer = VtkLineLayer(self.layer)
+        elif self.layer.geometryType() == QgsWkbTypes.PointGeometry:
+            self.vtk_layer = VtkPointLayer(self.layer)
+        else:
+            return
         anchor_update_dialog = AnchorUpdateDialog.AnchorUpdateDialog()
         anchor_update_dialog.abortButton.clicked.connect(self.abortUpdate)
         anchor_update_dialog.geometriesBar.setMaximum(layer.featureCount())

@@ -92,63 +92,129 @@ class VtkPolyLayer(VtkLayer):
         poly_data = self.extractor.startExtraction()
         # print(self.poly_data)
 
-        if self.geoType == QgsWkbTypes.PolygonGeometry:
-            poly_mapper = vtk.vtkPolyDataMapper()
-            tri_filter = vtk.vtkTriangleFilter()
-            tri_filter.SetInputData(poly_data)
-            tri_filter.Update()
+        poly_mapper = vtk.vtkPolyDataMapper()
+        tri_filter = vtk.vtkTriangleFilter()
+        tri_filter.SetInputData(poly_data)
+        tri_filter.Update()
 
-            # use vtkFeatureEdges for Boundary rendering
-            featureEdges = vtk.vtkFeatureEdges()
-            featureEdges.SetColoring(0)
-            featureEdges.BoundaryEdgesOn()
-            featureEdges.FeatureEdgesOff()
-            featureEdges.ManifoldEdgesOff()
-            featureEdges.NonManifoldEdgesOff()
-            featureEdges.SetInputData(poly_data)
-            featureEdges.Update()
+        # use vtkFeatureEdges for Boundary rendering
+        featureEdges = vtk.vtkFeatureEdges()
+        featureEdges.SetColoring(0)
+        featureEdges.BoundaryEdgesOn()
+        featureEdges.FeatureEdgesOff()
+        featureEdges.ManifoldEdgesOff()
+        featureEdges.NonManifoldEdgesOff()
+        featureEdges.SetInputData(poly_data)
+        featureEdges.Update()
 
-            edgeMapper = vtk.vtkPolyDataMapper()
-            edgeMapper.SetInputConnection(featureEdges.GetOutputPort())
-            edgeActor = vtk.vtkActor()
-            edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI?
-            edgeActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
-            edgeActor.SetMapper(edgeMapper)
+        edgeMapper = vtk.vtkPolyDataMapper()
+        edgeMapper.SetInputConnection(featureEdges.GetOutputPort())
+        edgeActor = vtk.vtkActor()
+        edgeActor.GetProperty().SetLineWidth(3)  # TODO: Width option in GUI?
+        edgeActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
+        edgeActor.SetMapper(edgeMapper)
 
-            poly_mapper.SetInputData(tri_filter.GetOutput())
+        poly_mapper.SetInputData(tri_filter.GetOutput())
 
-            # The actor is a grouping mechanism: besides the geometry (mapper), it
-            # also has a property, transformation matrix, and/or texture map.
-            # Here we set its color and rotate it -22.5 degrees.
-            actor = vtk.vtkActor()
-            actor.SetMapper(poly_mapper)
-            actor.GetProperty().SetColor(colour)
+        # The actor is a grouping mechanism: besides the geometry (mapper), it
+        # also has a property, transformation matrix, and/or texture map.
+        # Here we set its color and rotate it -22.5 degrees.
+        actor = vtk.vtkActor()
+        actor.SetMapper(poly_mapper)
+        actor.GetProperty().SetColor(colour)
 
-            self.vtkActor = actor, edgeActor
-            return actor, edgeActor
+        self.vtkActor = actor, edgeActor
+        return actor, edgeActor
 
-        if self.geoType == QgsWkbTypes.LineGeometry:
-            lineMapper = vtk.vtkPolyDataMapper()
-            lineMapper.SetInputData(poly_data)
-            lineActor = vtk.vtkActor()
-            lineActor.SetMapper(lineMapper)
-            lineActor.GetProperty().SetColor(colour)
-            lineActor.GetProperty().SetLineWidth(3)
+        # if self.geoType == QgsWkbTypes.LineGeometry:
+        #     lineMapper = vtk.vtkPolyDataMapper()
+        #     lineMapper.SetInputData(poly_data)
+        #     lineActor = vtk.vtkActor()
+        #     lineActor.SetMapper(lineMapper)
+        #     lineActor.GetProperty().SetColor(colour)
+        #     lineActor.GetProperty().SetLineWidth(3)
+        #
+        #     self.vtkActor = lineActor
+        #     return lineActor
+        #
+        # if self.geoType == QgsWkbTypes.PointGeometry:
+        #     pointMapper = vtk.vtkPolyDataMapper()
+        #     pointMapper.SetInputData(poly_data)
+        #     pointActor = vtk.vtkActor()
+        #     pointActor.SetMapper(pointMapper)
+        #     pointActor.GetProperty().SetPointSize(5)
+        #     pointActor.GetProperty().RenderPointsAsSpheresOn()
+        #     pointActor.GetProperty().SetColor(colour)
+        #
+        #     self.vtkActor = pointActor
+        #     return pointActor
 
-            self.vtkActor = lineActor
-            return lineActor
 
-        if self.geoType == QgsWkbTypes.PointGeometry:
-            pointMapper = vtk.vtkPolyDataMapper()
-            pointMapper.SetInputData(poly_data)
-            pointActor = vtk.vtkActor()
-            pointActor.SetMapper(pointMapper)
-            pointActor.GetProperty().SetPointSize(5)
-            pointActor.GetProperty().RenderPointsAsSpheresOn()
-            pointActor.GetProperty().SetColor(colour)
+class VtkLineLayer(VtkLayer):
+    vtkActor = None
 
-            self.vtkActor = pointActor
-            return pointActor
+    def make_wkt(self, vertices):
+        # wkt requires the first vertex to coincide with the last:
+        if len(vertices) < 3 and vertices[-1] != vertices[0]:
+            vertices.append(vertices[0])
+        vertexts = [vertex.get_coordinates() for vertex in vertices]
+        wkt = 'POLYGONZ(({0}))'.format(', '.join(vertexts))
+        return wkt
+
+    def insert_geometry(self, vertices):
+        point_index = self.extractor.anchors.GetNumberOfPoints() + 1
+        new_poly = vtk.vtkPolygon()
+        for vertex in vertices:
+            new_poly.GetPointIds().InsertNextId(point_index)
+            point_index += 1
+            self.extractor.anchors.InsertNextPoint(*vertex.get_coordinates())
+        self.extractor.polies.InsertNextCell(new_poly)
+
+    def get_actors(self, colour):
+        poly_data = self.extractor.startExtraction()
+        lineMapper = vtk.vtkPolyDataMapper()
+        lineMapper.SetInputData(poly_data)
+        lineActor = vtk.vtkActor()
+        lineActor.SetMapper(lineMapper)
+        lineActor.GetProperty().SetColor(colour)
+        lineActor.GetProperty().SetLineWidth(3)
+
+        self.vtkActor = lineActor
+        return lineActor
+
+
+class VtkPointLayer(VtkLayer):
+    vtkActor = None
+
+    def make_wkt(self, vertices):
+        # wkt requires the first vertex to coincide with the last:
+        if len(vertices) < 3 and vertices[-1] != vertices[0]:
+            vertices.append(vertices[0])
+        vertexts = [vertex.get_coordinates() for vertex in vertices]
+        wkt = 'POLYGONZ(({0}))'.format(', '.join(vertexts))
+        return wkt
+
+    def insert_geometry(self, vertices):
+        point_index = self.extractor.anchors.GetNumberOfPoints() + 1
+        new_poly = vtk.vtkPolygon()
+        for vertex in vertices:
+            new_poly.GetPointIds().InsertNextId(point_index)
+            point_index += 1
+            self.extractor.anchors.InsertNextPoint(*vertex.get_coordinates())
+        self.extractor.polies.InsertNextCell(new_poly)
+
+    def get_actors(self, colour):
+        poly_data = self.extractor.startExtraction()
+        pointMapper = vtk.vtkPolyDataMapper()
+        pointMapper.SetInputData(poly_data)
+        pointActor = vtk.vtkActor()
+        pointActor.SetMapper(pointMapper)
+        pointActor.GetProperty().SetPointSize(5)
+        pointActor.GetProperty().RenderPointsAsSpheresOn()
+        pointActor.GetProperty().SetColor(colour)
+
+        self.vtkActor = pointActor
+        return pointActor
 
 
 class VtkWidget(QVTKRenderWindowInteractor):
@@ -163,21 +229,32 @@ class VtkWidget(QVTKRenderWindowInteractor):
 
     def switch_layer(self, qgis_layer):
         layer_id = qgis_layer.id()
-        geoType = qgis_layer.geometryType()
+        if qgis_layer.type() != 1:  # Raster layers have no geometryType() method
+            geoType = qgis_layer.geometryType()
+        else:
+            geoType = None
         print(layer_id)
         if layer_id not in self.layers.keys():
-            print(self.layers)
-            created = VtkPolyLayer(qgs_layer=qgis_layer)
-            print('made a new one!')
-            self.layers[layer_id] = created
             if geoType == QgsWkbTypes.PolygonGeometry:
+                print(self.layers)
+                created = VtkPolyLayer(qgs_layer=qgis_layer)
+                print('made a new one!')
+                self.layers[layer_id] = created
                 actor, edge_actor = created.get_actors(self.colour_provider.next())
                 self.renderer.AddActor(actor)
                 self.renderer.AddActor(edge_actor)
             if geoType == QgsWkbTypes.LineGeometry:
+                print(self.layers)
+                created = VtkLineLayer(qgs_layer=qgis_layer)
+                print('made a new one!')
+                self.layers[layer_id] = created
                 lineActor = created.get_actors(self.colour_provider.next())
                 self.renderer.AddActor(lineActor)
             if geoType == QgsWkbTypes.PointGeometry:
+                print(self.layers)
+                created = VtkPointLayer(qgs_layer=qgis_layer)
+                print('made a new one!')
+                self.layers[layer_id] = created
                 pointActor = created.get_actors(self.colour_provider.next())
                 self.renderer.AddActor(pointActor)
         self.refresh_content()
@@ -261,6 +338,8 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
 
     def draw(self):
         for actor in self.actors:
+            if actor is None:
+                continue
             self.GetCurrentRenderer().RemoveActor(actor)
         # put all self.vertices into vertex_actor
         # build poly_line from vertices
@@ -339,10 +418,10 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             # '.pop' behaves the same way.
             # working with the select_index allows to work with a wdget that allows selection of vertices.
 
-            self.vertices.reverse()
+            # self.vertices.reverse()
             del self.vertices[self.select_index]
-            self.vertices.reverse()
-            self.select_index = -1
+            # self.vertices.reverse()
+            # self.select_index = -1
             self.draw()
 
     def removeAllVertices(self):

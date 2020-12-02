@@ -74,7 +74,7 @@ class TachyReader(QThread):
             gsi_ping.exec()
 
     def poll(self):
-        self.getRefHeight = self.getReflectorHeight()
+        #self.getRefHeight = self.getReflectorHeight()
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
@@ -135,13 +135,17 @@ class TachyReader(QThread):
 
     # TODO: crash when opening port without using the ping button
     #       Set ref height with geocom if gsi fails
+    #       Comma and error handling
     # Reflector height is getting set, but does not refresh in tachymeter when setting it with geocom
     def setReflectorHeight(self, refHeight):
         self.ser.close()
         self.ser.open(QSerialPort.ReadWrite)
         if self.ser.isOpen():
             # self.ser.writeData(("%R1Q,2012:" + str(refHeight) + gc.CRLF).encode('ascii'))
-            self.ser.writeData(("PUT/87...0+00001700 \r\n").encode('ascii'))
+            # self.ser.writeData(("PUT/87...0+00001700 \r\n").encode('ascii'))
+            gsi_height = refHeight.split('.')
+            self.ser.writeData(("PUT/87...0+" + gsi_height[0].zfill(5) + "{:<03s}".format(gsi_height[1]) + " \r\n").encode('ascii'))
+
         else:
             # TODO: MessageBar?
             # iface.messageBar().pushMessage("", level=Qgis.Info, duration=10)
