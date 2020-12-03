@@ -36,11 +36,13 @@ except ConnectionRefusedError:
 import os
 import gc
 from PyQt5.QtSerialPort import QSerialPortInfo, QSerialPort
-from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout, QLineEdit
+from PyQt5.QtWidgets import QAction, QHeaderView, QDialog, QFileDialog, QSizePolicy, QVBoxLayout, QLineEdit,\
+    QPushButton, QProgressDialog, QProgressBar
 from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreApplication, QThread, qVersion, Qt, QEvent, QObject
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
-from qgis.core import QgsMapLayerProxyModel, QgsProject, QgsMapLayerType, QgsWkbTypes, QgsLayerTreeGroup, QgsLayerTreeLayer
+from qgis.core import Qgis, QgsMapLayerProxyModel, QgsProject, QgsMapLayerType, QgsWkbTypes, QgsLayerTreeGroup,\
+    QgsLayerTreeLayer, QgsGeometry, QgsVectorDataProvider, QgsFeature
 from qgis.gui import QgsMapToolPan
 
 import vtk
@@ -53,7 +55,7 @@ from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
-from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle
+from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle, VtkPolyLayer, VtkLineLayer, VtkPointLayer
 
 
 def make_axes_actor(scale, xyzLabels):
@@ -146,26 +148,81 @@ class Tachy2Gis:
     def clearCanvas(self):
         self.mapTool.clear()
 
+    def removeSelection(self):
+        self.dlg.targetLayerComboBox.currentLayer().removeSelection()
+
     ## Opens the field dialog in preparation of dumping new vertices to the target layer
     def dump(self):
-        # the input table of the dialog is updated
-        self.fieldDialog.populateFieldTable()
-        result = self.fieldDialog.exec_()
-        if result == QDialog.Accepted:
-            targetLayer = self.fieldDialog.layer
-            self.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
-            # if the target layer holds point geometries, only the currently selected vertex is dumped and
-            # removed from the list
-            if self.fieldDialog.targetLayerComboBox.currentLayer().geometryType() == 0:
-                self.mapTool.deleteVertex()
+        vertices = self.vtk_mouse_interactor_style.vertices
+        targetLayer = self.dlg.targetLayerComboBox.currentLayer()
+        caps = targetLayer.dataProvider().capabilities()
+        if targetLayer.geometryType() == QgsWkbTypes.PolygonGeometry:
+            if len(vertices) < 3:
+                iface.messageBar().pushMessage("Fehler: ", "Polygone müssen mindestens 3 Punkte haben!", Qgis.Warning, 5)
+                return
+            # TODO: Add multi part to selected feature
+            if targetLayer.selectedFeatureCount() == 1 and QgsWkbTypes.isMultiType(targetLayer.wkbType()):
+                widget = iface.messageBar().createMessage("Info: ", "Polygon wird als Teil hinzugefügt!")
+                button = QPushButton(widget)
+                button.setText("Layer auswahl aufheben")
+                button.pressed.connect(self.removeSelection)
+                widget.layout().addWidget(button)
+                iface.messageBar().pushWidget(widget, Qgis.Info)
+                return
+            if caps & QgsVectorDataProvider.AddFeatures:
+                feat = QgsFeature(targetLayer.fields())
+                if targetLayer.wkbType() == QgsWkbTypes.PolygonZM or targetLayer.wkbType() == QgsWkbTypes.MultiPolygonZM:
+                    vert2wkt = "PolygonZM (("
+                    for pointz in vertices:
+                        tupleList = list(pointz)
+                        tupleList.append(0)
+                        vert2wkt += str(tupleList).replace(',', '  ').strip('[]')
+                        vert2wkt += ","
+                    firstPoint = list(vertices[0])
+                    firstPoint.append(0)
+                    vert2wkt += str(firstPoint).replace(',', ' ').strip('[]')
+                    vert2wkt += "))"
+                geometry = QgsGeometry.fromWkt(vert2wkt)
+                feat.setGeometry(geometry)
+                targetLayer.dataProvider().addFeatures([feat])
+                # targetLayer.commitChanges()
             else:
-                # otherwise the list is cleared
-                self.mapTool.clear()
-            targetLayer.dataProvider().forceReload()
-            targetLayer.triggerRepaint()
-            self.vertexList.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
+                return
+
+        elif self.dlg.targetLayerComboBox.currentLayer().geometryType() == QgsWkbTypes.LineGeometry:
+            return
+        elif self.dlg.targetLayerComboBox.currentLayer().geometryType() == QgsWkbTypes.PointGeometry:
+            return
         else:
             return
+        # TODO: Does not show default values
+        iface.openFeatureForm(targetLayer, list(f for f in targetLayer.getFeatures())[-1], True)
+
+        if iface.mapCanvas().isCachingEnabled():
+            targetLayer.triggerRepaint()
+        else:
+            iface.mapCanvas().refresh()
+        # clear vertices and remove them from renderer
+        self.vtk_mouse_interactor_style.vertices = []
+        self.vtk_mouse_interactor_style.draw()
+
+        # # the input table of the dialog is updated
+        # self.fieldDialog.populateFieldTable()
+        # result = self.fieldDialog.exec_()
+        # if result == QDialog.Accepted:
+        #     targetLayer = self.fieldDialog.layer
+        #     self.vertexList.dumpToFile(targetLayer, self.fieldDialog.fieldData)
+        #     # if the target layer holds point geometries, only the currently selected vertex is dumped and
+        #     # removed from the list
+        #     if self.fieldDialog.targetLayerComboBox.currentLayer().geometryType() == 0:
+        #         self.mapTool.deleteVertex()
+        #     else:
+        #         # otherwise the list is cleared
+        #         self.mapTool.clear()
+        #     targetLayer.dataProvider().forceReload()
+        #     targetLayer.triggerRepaint()
+        #     self.vertexList.updateAnchors(self.dlg.sourceLayerComboBox.currentLayer())
+
 
     ## Restores the map tool to the one that was active before T2G was started
     #  The pan tool is the default tool used by QGIS
@@ -276,6 +333,10 @@ class Tachy2Gis:
         cells = vtk.vtkCellArray()
         colors = vtk.vtkUnsignedCharArray()
         colors.SetNumberOfComponents(3)
+        #bar = QProgressBar()
+        #progress = QProgressDialog("Lade PointCloud...", "Abbrechen", 100, 100)
+        #progress.setBar(bar)
+        #progress.show()
         with open(cloudFileName, 'r', encoding="utf-8-sig") as file:
             for line in file:
                 split = line.split()
@@ -299,34 +360,44 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.setAdditionalItems(addItems)
         self.vtk_widget.renderer.AddActor(pointActor)
 
+# TODO: Set colors for active or inactive layers?
     def setPickable(self):
         currentLayer = self.dlg.sourceLayerComboBox.currentLayer()
         if currentLayer is None:
             currentLayer = self.dlg.sourceLayerComboBox.additionalItems()
-        for ids, polyLayer in self.vtk_widget.layers.items():
+        for ids, layer in self.vtk_widget.layers.items():
             if type(currentLayer) == list:
                 if " ⛅   "+ids in currentLayer:
-                    polyLayer.PickableOn()
+                    layer.PickableOn()
                 continue
             if currentLayer.type() == QgsMapLayerType.RasterLayer:
                 continue
             if currentLayer.geometryType() == QgsWkbTypes.NullGeometry:  # excel sheet
                 continue
-            if isinstance(polyLayer, vtk.vtkActor):
-                polyLayer.PickableOff()
+            if isinstance(layer, vtk.vtkActor):
+                layer.PickableOff()
+                layer.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Orange"))
                 continue
             if not ids == currentLayer.id():
-                if type(polyLayer.vtkActor) == tuple:
-                    for actor in polyLayer.vtkActor:
+                if type(layer.vtkActor) == tuple:
+                    for actor in layer.vtkActor:
                         actor.PickableOff()
+                    layer.vtkActor[0].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Orange"))
                 else:
-                    polyLayer.vtkActor.PickableOff()
+                    if isinstance(layer, VtkLineLayer):
+                        layer.vtkActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Black"))
+                    else:
+                        layer.vtkActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Orange"))
+                    layer.vtkActor.PickableOff()
             else:
-                if type(polyLayer.vtkActor) == tuple:
-                    for actor in polyLayer.vtkActor:
+                if type(layer.vtkActor) == tuple:
+                    for actor in layer.vtkActor:
                         actor.PickableOn()
+                    layer.vtkActor[0].GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Yellow"))
                 else:
-                    polyLayer.vtkActor.PickableOn()
+                    layer.vtkActor.PickableOn()
+                    layer.vtkActor.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d("Yellow"))
+        self.vtk_widget.refresh_content()
 
     # Interface code goes here:
     def setupControls(self):
