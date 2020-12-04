@@ -78,6 +78,7 @@ class ExtentProvider(QObject):
     def set_mode(self, cb_index):
         i = cb_index
         self.active_mode = self.modes[i]
+        self.modes[i]()
 
     def reset(self):
         self.features.clear()

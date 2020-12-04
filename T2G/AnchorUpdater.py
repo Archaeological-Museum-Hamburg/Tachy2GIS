@@ -131,7 +131,7 @@ def unpack_multi_polygons(geometries):
     return unpacked
 
 
-# TODO: Polygon holes get rendered as polygon
+# TODO: Polygon holes get rendered as polygon, remove layer cache code
 class VtkAnchorUpdater(AnchorUpdater):
     layer_cache = {}
     poly_data = None
@@ -143,29 +143,30 @@ class VtkAnchorUpdater(AnchorUpdater):
             self.signalAnchorCount.emit(len(geometries))
             active_layer_id = self.layer.id()
             if active_layer_id not in self.layer_cache.keys():
-                qApp.processEvents()
-                polies = vtk.vtkCellArray()
-                anchors = vtk.vtkPoints()
-                anchors.SetDataTypeToDouble()
-                point_index = 0
-                geometries = unpack_multi_polygons(geometries)
-                for geometry in geometries:
-                    poly = vtk.vtkPolygon()
-                    for vertex in geometry[:-1]:
-                        vertex = vertex[:3]
-                        poly.GetPointIds().InsertNextId(point_index)
-                        point_index += 1
-                        anchors.InsertNextPoint(*vertex)
-                        self.signalAnchorCount.emit(point_index)
-                        qApp.processEvents()
-                        if self.abort:
-                            return
-                    polies.InsertNextCell(poly)
-                poly_data = vtk.vtkPolyData()
-                poly_data.SetPoints(anchors)
-                poly_data.SetPolys(polies)
+                pass
+            qApp.processEvents()
+            polies = vtk.vtkCellArray()
+            anchors = vtk.vtkPoints()
+            anchors.SetDataTypeToDouble()
+            point_index = 0
+            geometries = unpack_multi_polygons(geometries)
+            for geometry in geometries:
+                poly = vtk.vtkPolygon()
+                for vertex in geometry[:-1]:
+                    vertex = vertex[:3]
+                    poly.GetPointIds().InsertNextId(point_index)
+                    point_index += 1
+                    anchors.InsertNextPoint(*vertex)
+                    self.signalAnchorCount.emit(point_index)
+                    qApp.processEvents()
+                    if self.abort:
+                        return
+                polies.InsertNextCell(poly)
+            poly_data = vtk.vtkPolyData()
+            poly_data.SetPoints(anchors)
+            poly_data.SetPolys(polies)
 
-                self.layer_cache[active_layer_id] = {'poly_data': poly_data, 'anchors': anchors}
+            self.layer_cache[active_layer_id] = {'poly_data': poly_data, 'anchors': anchors}
             print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']
@@ -176,23 +177,24 @@ class VtkAnchorUpdater(AnchorUpdater):
             self.signalAnchorCount.emit(len(geometries))
             active_layer_id = self.layer.id()
             if active_layer_id not in self.layer_cache.keys():
-                linePoints = vtk.vtkPoints()
-                cells = vtk.vtkCellArray()
-                geometries = unpack_multi_polygons(geometries)
-                index = 0
-                for geometry in geometries:
-                    polyLine = vtk.vtkPolyLine()
-                    for vertex in geometry:
-                        polyLine.GetPointIds().InsertNextId(index)
-                        linePoints.InsertNextPoint(*vertex)
-                        index += 1
-                    cells.InsertNextCell(polyLine)
+                pass
+            linePoints = vtk.vtkPoints()
+            cells = vtk.vtkCellArray()
+            geometries = unpack_multi_polygons(geometries)
+            index = 0
+            for geometry in geometries:
+                polyLine = vtk.vtkPolyLine()
+                for vertex in geometry:
+                    polyLine.GetPointIds().InsertNextId(index)
+                    linePoints.InsertNextPoint(*vertex)
+                    index += 1
+                cells.InsertNextCell(polyLine)
 
-                polyData = vtk.vtkPolyData()
-                polyData.SetPoints(linePoints)
-                polyData.SetLines(cells)
+            polyData = vtk.vtkPolyData()
+            polyData.SetPoints(linePoints)
+            polyData.SetLines(cells)
 
-                self.layer_cache[active_layer_id] = {'poly_data': polyData, 'anchors': linePoints}
+            self.layer_cache[active_layer_id] = {'poly_data': polyData, 'anchors': linePoints}
             print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']
