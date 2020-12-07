@@ -586,8 +586,7 @@ class Tachy2Gis:
                     continue
                 if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
                     continue
-                for node in child:
-                    node.visibilityChanged.disconnect()
+                child.visibilityChanged.disconnect()
 
     # TODO: Qgis sub-group not handled (group in group)
     #       rename to connectNodes(self), replace with layerTreeRoot().findLayers() ?
@@ -607,10 +606,9 @@ class Tachy2Gis:
                     continue
                 if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
                     continue
-                for node in child:
-                    if node.receivers(node.visibilityChanged) > 1:
-                        continue
-                    node.visibilityChanged.connect(self.update_renderer)
+                if child.receivers(child.visibilityChanged) > 1:
+                    continue
+                child.visibilityChanged.connect(self.update_renderer)
 
     def disconnectMapLayers(self):
         for root in QgsProject.instance().layerTreeRoot().findLayers():
