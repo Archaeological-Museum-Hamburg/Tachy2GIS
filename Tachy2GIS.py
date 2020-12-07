@@ -42,7 +42,7 @@ from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreAppli
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
 from qgis.core import Qgis, QgsMapLayerProxyModel, QgsProject, QgsMapLayerType, QgsWkbTypes, QgsLayerTreeGroup,\
-    QgsLayerTreeLayer, QgsGeometry, QgsVectorDataProvider, QgsFeature
+    QgsLayerTreeLayer, QgsGeometry, QgsVectorDataProvider, QgsFeature, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils
 from qgis.gui import QgsMapToolPan
 
 import vtk
@@ -279,12 +279,19 @@ class Tachy2Gis:
 
         if geometry.isEmpty():
             return
-        # iface.openFeatureForm(targetLayer, list(f for f in targetLayer.getFeatures())[-1])
+
         targetLayer.startEditing()
-        # TODO: Default value expressions
+
+        # evaluate default value expressions
+        context = QgsExpressionContext()
+        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(targetLayer))
+        expList = []
+        for idx in range(targetLayer.fields().count()):
+            expList.append(QgsExpression(targetLayer.defaultValueDefinition(idx).expression()))
         defValues = []
-        for i in range(targetLayer.fields().count()):
-            defValues.append(targetLayer.defaultValueDefinition(i).expression().strip('\''))
+        for exp in expList:
+            defValues.append(exp.evaluate(context))
+
         iface.vectorLayerTools().addFeature(targetLayer, dict(list(enumerate(defValues))), geometry)
         # refresh layer and mapCanvas after adding feature
         if iface.mapCanvas().isCachingEnabled():
@@ -612,7 +619,7 @@ class Tachy2Gis:
             if root.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             pass
-            root.layer().geometryChanged.disconnect()
+            #root.layer().geometryChanged.disconnect()
 
     # connect existing QgsMapLayers
     def connectMapLayers(self):
@@ -622,7 +629,7 @@ class Tachy2Gis:
             if root.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             pass
-            root.layer().geometryChanged.connect(self.test)  # TODO: signal not triggering but shows as connected
+            #root.layer().geometryChanged.connect(self.test)  # TODO: signal not triggering but shows as connected
 
     def update_renderer(self):
         #self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
