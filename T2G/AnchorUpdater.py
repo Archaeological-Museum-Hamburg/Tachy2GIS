@@ -204,18 +204,19 @@ class VtkAnchorUpdater(AnchorUpdater):
             self.signalAnchorCount.emit(len(geometries))
             active_layer_id = self.layer.id()
             if active_layer_id not in self.layer_cache.keys():
-                points = vtk.vtkPoints()
-                v_cells = vtk.vtkCellArray()
-                geometries = unpack_multi_polygons(geometries)
-                for geometry in geometries:
-                    for vertex in geometry:
-                        pid = points.InsertNextPoint(vertex.x(), vertex.y(), vertex.z())
-                        v_cells.InsertNextCell(1, [pid])
+                pass
+            points = vtk.vtkPoints()
+            v_cells = vtk.vtkCellArray()
+            geometries = unpack_multi_polygons(geometries)
+            for geometry in geometries:
+                for vertex in geometry:
+                    pid = points.InsertNextPoint(vertex.x(), vertex.y(), vertex.z())
+                    v_cells.InsertNextCell(1, [pid])
 
-                pointData = vtk.vtkPolyData()
-                pointData.SetPoints(points)
-                pointData.SetVerts(v_cells)
-                self.layer_cache[active_layer_id] = {'poly_data': pointData, 'anchors': points}
+            pointData = vtk.vtkPolyData()
+            pointData.SetPoints(points)
+            pointData.SetVerts(v_cells)
+            self.layer_cache[active_layer_id] = {'poly_data': pointData, 'anchors': points}
             print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']

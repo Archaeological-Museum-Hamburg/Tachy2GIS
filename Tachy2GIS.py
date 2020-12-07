@@ -132,7 +132,7 @@ class Tachy2Gis:
         self.tachyReader.lineReceived.connect(self.vertexReceived)
         # self.tachyReader.beginListening()
         self.pluginIsActive = False
-        # self.dlg = None
+        self.dlg = None
         self.eventFilter = LineEditClicked()
 
     NO_PORT = 'Select tachymeter USB port'
@@ -151,8 +151,7 @@ class Tachy2Gis:
     def removeSelection(self):
         self.dlg.targetLayerComboBox.currentLayer().removeSelection()
 
-    ## Opens the field dialog in preparation of dumping new vertices to the target layer
-    # TODO: Undo dump, attribute form default values, trigger vtk re-render
+    #
     def dump(self):
         vertices = self.vtk_mouse_interactor_style.vertices
         if len(vertices) == 0:
@@ -164,7 +163,7 @@ class Tachy2Gis:
             iface.messageBar().pushMessage("Fehler: ", "Features können nicht zum Layer hinzugefügt werden!", Qgis.Warning, 5)
             return
 
-        feat = QgsFeature(targetLayer.fields())
+        geometry = QgsGeometry.fromWkt("Point EMPTY")
 
         if targetLayer.geometryType() == QgsWkbTypes.PolygonGeometry:
             if len(vertices) < 3:
@@ -179,9 +178,8 @@ class Tachy2Gis:
                 widget.layout().addWidget(button)
                 iface.messageBar().pushWidget(widget, Qgis.Info)
                 return
-            #feat = QgsFeature(targetLayer.fields())
-            elif targetLayer.wkbType() == QgsWkbTypes.PolygonZM or targetLayer.wkbType() == QgsWkbTypes.MultiPolygonZM:
-                vert2wkt = "PolygonZM (("
+            elif targetLayer.wkbType() == QgsWkbTypes.MultiPolygonZM:
+                vert2wkt = "MultiPolygonZM ((("
                 for pointz in vertices:
                     tupleList = list(pointz)
                     tupleList.append(0)
@@ -190,14 +188,19 @@ class Tachy2Gis:
                 firstPoint = list(vertices[0])
                 firstPoint.append(0)
                 vert2wkt += str(firstPoint).replace(',', ' ').strip('[]')
-                vert2wkt += "))"
+                vert2wkt += ")))"
+            elif targetLayer.wkbType() == QgsWkbTypes.MultiPolygonZ:
+                vert2wkt = "MultiPolygonZ ((("
+                for pointz in vertices:
+                    tupleList = list(pointz)
+                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
+                    vert2wkt += ", "
+                firstPoint = list(vertices[0])
+                vert2wkt += str(firstPoint).replace(',', ' ').strip('[]')
+                vert2wkt += ")))"
             else:
                 return
             geometry = QgsGeometry.fromWkt(vert2wkt)
-            feat.setGeometry(geometry)
-            targetLayer.startEditing()
-            targetLayer.dataProvider().addFeatures([feat])
-            # targetLayer.commitChanges()
 
         elif self.dlg.targetLayerComboBox.currentLayer().geometryType() == QgsWkbTypes.LineGeometry:
             if len(vertices) < 2:
@@ -212,24 +215,24 @@ class Tachy2Gis:
                 widget.layout().addWidget(button)
                 iface.messageBar().pushWidget(widget, Qgis.Info)
                 return
-            elif targetLayer.wkbType() == QgsWkbTypes.LineStringZM or targetLayer.wkbType() == QgsWkbTypes.MultiLineStringZM:
+            elif targetLayer.wkbType() == QgsWkbTypes.MultiLineStringZM:
                 vert2wkt = "MultiLineStringZM (("
-                for pointz in vertices[:-1]:
+                for pointz in vertices:
                     tupleList = list(pointz)
                     tupleList.append(0)
                     vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
                     vert2wkt += ", "
-                tupleList = list(vertices[-1])
-                tupleList.append(0)
-                vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
                 vert2wkt += "))"
-                print(vert2wkt)
+            elif targetLayer.wkbType() == QgsWkbTypes.MultiLineStringZ:
+                vert2wkt = "MultiLineStringZ (("
+                for pointz in vertices:
+                    tupleList = list(pointz)
+                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
+                    vert2wkt += ", "
+                vert2wkt += "))"
             else:
                 return
             geometry = QgsGeometry.fromWkt(vert2wkt)
-            feat.setGeometry(geometry)
-            targetLayer.startEditing()
-            targetLayer.dataProvider().addFeatures([feat])
 
         elif self.dlg.targetLayerComboBox.currentLayer().geometryType() == QgsWkbTypes.PointGeometry:
             # TODO: Add multi part to selected feature
@@ -241,7 +244,7 @@ class Tachy2Gis:
                 widget.layout().addWidget(button)
                 iface.messageBar().pushWidget(widget, Qgis.Info)
                 return
-            elif targetLayer.wkbType() == QgsWkbTypes.PointZM or targetLayer.wkbType() == QgsWkbTypes.MultiPointZM:
+            elif targetLayer.wkbType() == QgsWkbTypes.MultiPointZM:
                 # accidentally adds multipoints instead of multiple single points
                 vert2wkt = "MultiPointZM (("
                 if len(vertices) > 1:
@@ -250,24 +253,40 @@ class Tachy2Gis:
                         tupleList.append(0)
                         vert2wkt += str(tupleList).replace(',', '').strip('[]')
                         vert2wkt += "), ("
-                    tupleList = list(vertices[-1])
-                    tupleList.append(0)
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
+                    endPoint = list(vertices[-1])
+                    endPoint.append(0)
+                    vert2wkt += str(endPoint).replace(',', ' ').strip('[]')
                 else:
                     tupleList = list(vertices[0])
-                    tupleList.append(0)
+                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
+                vert2wkt += "))"
+            elif targetLayer.wkbType() == QgsWkbTypes.MultiPointZ:
+                vert2wkt = "MultiPointZ (("
+                if len(vertices) > 1:
+                    for pointz in vertices[:-1]:
+                        tupleList = list(pointz)
+                        vert2wkt += str(tupleList).replace(',', '').strip('[]')
+                        vert2wkt += "), ("
+                    endPoint = list(vertices[-1])
+                    vert2wkt += str(endPoint).replace(',', ' ').strip('[]')
+                else:
+                    tupleList = list(vertices[0])
                     vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
                 vert2wkt += "))"
             else:
                 return
             geometry = QgsGeometry.fromWkt(vert2wkt)
-            feat.setGeometry(geometry)
-            targetLayer.startEditing()
-            targetLayer.dataProvider().addFeatures([feat])
 
-        # TODO: Does not show default values
-        iface.openFeatureForm(targetLayer, list(f for f in targetLayer.getFeatures())[-1], True)
-
+        if geometry.isEmpty():
+            return
+        # iface.openFeatureForm(targetLayer, list(f for f in targetLayer.getFeatures())[-1])
+        targetLayer.startEditing()
+        # TODO: Default value expressions
+        defValues = []
+        for i in range(targetLayer.fields().count()):
+            defValues.append(targetLayer.defaultValueDefinition(i).expression().strip('\''))
+        iface.vectorLayerTools().addFeature(targetLayer, dict(list(enumerate(defValues))), geometry)
+        # refresh layer and mapCanvas after adding feature
         if iface.mapCanvas().isCachingEnabled():
             targetLayer.triggerRepaint()
         else:
@@ -276,12 +295,15 @@ class Tachy2Gis:
         self.vtk_mouse_interactor_style.vertices = []
         self.vtk_mouse_interactor_style.draw()
         # remove vtk layer and update renderer
-        if type(self.vtk_widget.layers[targetLayer.id()].vtkActor) == tuple:
-            for actor in self.vtk_widget.layers[targetLayer.id()].vtkActor:
+        self.rerenderVtkLayer(targetLayer)
+
+    def rerenderVtkLayer(self, layer):
+        if type(self.vtk_widget.layers[layer.id()].vtkActor) == tuple:
+            for actor in self.vtk_widget.layers[layer.id()].vtkActor:
                 self.vtk_widget.renderer.RemoveActor(actor)
         else:
-            self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[targetLayer.id()].vtkActor)
-        self.vtk_widget.layers.pop(targetLayer.id())
+            self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layer.id()].vtkActor)
+        self.vtk_widget.layers.pop(layer.id())
         self.update_renderer()
 
     ## Restores the map tool to the one that was active before T2G was started
@@ -313,6 +335,8 @@ class Tachy2Gis:
         self.restoreTool()
         self.mapTool.clear()
         self.disconnectVisibilityChanged()
+        self.disconnectMapLayers()
+        #QgsProject.instance().legendLayersAdded.disconnect()
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -377,7 +401,7 @@ class Tachy2Gis:
     def getRefHeight(self):
         self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
 
-    # TODO: Progress bar, remove layers from sourceLayerComboBox
+    # TODO: remove layers from sourceLayerComboBox
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
     def loadPointCloud(self):
         cloudFileName = QFileDialog.getOpenFileName(None,
@@ -532,16 +556,15 @@ class Tachy2Gis:
         self.vertexList.signal_anchors_updated.connect(self.update_renderer)
         # Connect signals for existing layers
         self.connectVisibilityChanged()
-        # Connect visibilityChanged signal for added layers
-        # TODO: Test - gives NoneType error when loading project
-        # QgsProject.instance().layersAdded.connect(self.connectVisibilityChanged)
-        # QgsProject.instance().layersAdded.connect(update_renderer)
+        self.connectMapLayers()
+        # Connect visibilityChanged signal for added and removed layers
+        # QgsProject.instance().legendLayersAdded.connect(self.connectVisibilityChanged)
         # QgsProject.instance().layersRemoved.connect(self.disconnectVisibilityChanged)
+        # QgsProject.instance().legendLayersRemoved.connect(self.rerenderVtkLayer)
         # QgsProject.instance().layersRemoved.connect(self.update_renderer)
         # QgsProject.instance().layersRemoved.connect(removeVtkLayer)
-        # QgsProject.instance().featureAdded.connect(self.update_renderer)  # rerender layer
-        # QgsProject.instance().featureRemoved.connect(self.update_renderer)
 
+    # TODO: rename to disconnectNodes(self)
     def disconnectVisibilityChanged(self):
         for child in QgsProject.instance().layerTreeRoot().children():
             if isinstance(child, QgsLayerTreeGroup):
@@ -559,6 +582,8 @@ class Tachy2Gis:
                 for node in child:
                     node.visibilityChanged.disconnect()
 
+    # TODO: Qgis sub-group not handled (group in group)
+    #       rename to connectNodes(self), replace with layerTreeRoot().findLayers() ?
     def connectVisibilityChanged(self):
         for child in QgsProject.instance().layerTreeRoot().children():
             if isinstance(child, QgsLayerTreeGroup):
@@ -579,6 +604,25 @@ class Tachy2Gis:
                     if node.receivers(node.visibilityChanged) > 1:
                         continue
                     node.visibilityChanged.connect(self.update_renderer)
+
+    def disconnectMapLayers(self):
+        for root in QgsProject.instance().layerTreeRoot().findLayers():
+            if root.layer().type() == QgsMapLayerType.RasterLayer:
+                continue
+            if root.layer().geometryType() == QgsWkbTypes.NullGeometry:
+                continue
+            pass
+            root.layer().geometryChanged.disconnect()
+
+    # connect existing QgsMapLayers
+    def connectMapLayers(self):
+        for root in QgsProject.instance().layerTreeRoot().findLayers():
+            if root.layer().type() == QgsMapLayerType.RasterLayer:
+                continue
+            if root.layer().geometryType() == QgsWkbTypes.NullGeometry:
+                continue
+            pass
+            root.layer().geometryChanged.connect(self.test)  # TODO: signal not triggering but shows as connected
 
     def update_renderer(self):
         #self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
