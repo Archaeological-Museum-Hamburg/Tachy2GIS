@@ -157,147 +157,11 @@ class Tachy2Gis:
         if len(vertices) == 0:
             iface.messageBar().pushMessage("Fehler: ", "Keine Punkte vorhanden!", Qgis.Warning, 5)
             return
+
         targetLayer = self.dlg.targetLayerComboBox.currentLayer()
-        caps = targetLayer.dataProvider().capabilities()
-        if not caps & QgsVectorDataProvider.AddFeatures:
-            iface.messageBar().pushMessage("Fehler: ", "Features können nicht zum Layer hinzugefügt werden!", Qgis.Warning, 5)
-            return
+        vtk_layer = self.vtk_widget.layers[targetLayer.id()]
+        vtk_layer.add_feature(vertices, iface)
 
-        geometry = QgsGeometry.fromWkt("Point EMPTY")
-
-        if targetLayer.geometryType() == QgsWkbTypes.PolygonGeometry:
-            if len(vertices) < 3:
-                iface.messageBar().pushMessage("Fehler: ", "Polygone müssen mindestens 3 Punkte haben!", Qgis.Warning, 5)
-                return
-            # TODO: Add multi part to selected feature
-            if targetLayer.selectedFeatureCount() == 1 and QgsWkbTypes.isMultiType(targetLayer.wkbType()):
-                widget = iface.messageBar().createMessage("Info: ", "Polygon wird als Teil hinzugefügt!")
-                button = QPushButton(widget)
-                button.setText("Layer auswahl aufheben")
-                button.pressed.connect(self.removeSelection)
-                widget.layout().addWidget(button)
-                iface.messageBar().pushWidget(widget, Qgis.Info)
-                return
-            elif targetLayer.wkbType() == QgsWkbTypes.MultiPolygonZM:
-                vert2wkt = "MultiPolygonZM ((("
-                for pointz in vertices:
-                    tupleList = list(pointz)
-                    tupleList.append(0)
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
-                    vert2wkt += ", "
-                firstPoint = list(vertices[0])
-                firstPoint.append(0)
-                vert2wkt += str(firstPoint).replace(',', ' ').strip('[]')
-                vert2wkt += ")))"
-            elif targetLayer.wkbType() == QgsWkbTypes.MultiPolygonZ:
-                vert2wkt = "MultiPolygonZ ((("
-                for pointz in vertices:
-                    tupleList = list(pointz)
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
-                    vert2wkt += ", "
-                firstPoint = list(vertices[0])
-                vert2wkt += str(firstPoint).replace(',', ' ').strip('[]')
-                vert2wkt += ")))"
-            else:
-                return
-            geometry = QgsGeometry.fromWkt(vert2wkt)
-
-        elif self.dlg.targetLayerComboBox.currentLayer().geometryType() == QgsWkbTypes.LineGeometry:
-            if len(vertices) < 2:
-                iface.messageBar().pushMessage("Fehler: ", "Linien müssen mindestens 2 Punkte haben!", Qgis.Warning, 5)
-                return
-            # TODO: Add multi part to selected feature
-            if targetLayer.selectedFeatureCount() == 1 and QgsWkbTypes.isMultiType(targetLayer.wkbType()):
-                widget = iface.messageBar().createMessage("Info: ", "Linie wird als Teil hinzugefügt!")
-                button = QPushButton(widget)
-                button.setText("Layer auswahl aufheben")
-                button.pressed.connect(self.removeSelection)
-                widget.layout().addWidget(button)
-                iface.messageBar().pushWidget(widget, Qgis.Info)
-                return
-            elif targetLayer.wkbType() == QgsWkbTypes.MultiLineStringZM:
-                vert2wkt = "MultiLineStringZM (("
-                for pointz in vertices:
-                    tupleList = list(pointz)
-                    tupleList.append(0)
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
-                    vert2wkt += ", "
-                vert2wkt += "))"
-            elif targetLayer.wkbType() == QgsWkbTypes.MultiLineStringZ:
-                vert2wkt = "MultiLineStringZ (("
-                for pointz in vertices:
-                    tupleList = list(pointz)
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
-                    vert2wkt += ", "
-                vert2wkt += "))"
-            else:
-                return
-            geometry = QgsGeometry.fromWkt(vert2wkt)
-
-        elif self.dlg.targetLayerComboBox.currentLayer().geometryType() == QgsWkbTypes.PointGeometry:
-            # TODO: Add multi part to selected feature
-            if targetLayer.selectedFeatureCount() == 1 and QgsWkbTypes.isMultiType(targetLayer.wkbType()):
-                widget = iface.messageBar().createMessage("Info: ", "Punkt wird als Teil hinzugefügt!")
-                button = QPushButton(widget)
-                button.setText("Layer auswahl aufheben")
-                button.pressed.connect(self.removeSelection)
-                widget.layout().addWidget(button)
-                iface.messageBar().pushWidget(widget, Qgis.Info)
-                return
-            elif targetLayer.wkbType() == QgsWkbTypes.MultiPointZM:
-                # accidentally adds multipoints instead of multiple single points
-                vert2wkt = "MultiPointZM (("
-                if len(vertices) > 1:
-                    for pointz in vertices[:-1]:
-                        tupleList = list(pointz)
-                        tupleList.append(0)
-                        vert2wkt += str(tupleList).replace(',', '').strip('[]')
-                        vert2wkt += "), ("
-                    endPoint = list(vertices[-1])
-                    endPoint.append(0)
-                    vert2wkt += str(endPoint).replace(',', ' ').strip('[]')
-                else:
-                    tupleList = list(vertices[0])
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
-                vert2wkt += "))"
-            elif targetLayer.wkbType() == QgsWkbTypes.MultiPointZ:
-                vert2wkt = "MultiPointZ (("
-                if len(vertices) > 1:
-                    for pointz in vertices[:-1]:
-                        tupleList = list(pointz)
-                        vert2wkt += str(tupleList).replace(',', '').strip('[]')
-                        vert2wkt += "), ("
-                    endPoint = list(vertices[-1])
-                    vert2wkt += str(endPoint).replace(',', ' ').strip('[]')
-                else:
-                    tupleList = list(vertices[0])
-                    vert2wkt += str(tupleList).replace(',', ' ').strip('[]')
-                vert2wkt += "))"
-            else:
-                return
-            geometry = QgsGeometry.fromWkt(vert2wkt)
-
-        if geometry.isEmpty():
-            return
-
-        targetLayer.startEditing()
-
-        # evaluate default value expressions
-        context = QgsExpressionContext()
-        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(targetLayer))
-        expList = []
-        for idx in range(targetLayer.fields().count()):
-            expList.append(QgsExpression(targetLayer.defaultValueDefinition(idx).expression()))
-        defValues = []
-        for exp in expList:
-            defValues.append(exp.evaluate(context))
-
-        iface.vectorLayerTools().addFeature(targetLayer, dict(list(enumerate(defValues))), geometry)
-        # refresh layer and mapCanvas after adding feature
-        if iface.mapCanvas().isCachingEnabled():
-            targetLayer.triggerRepaint()
-        else:
-            iface.mapCanvas().refresh()
         # clear picked vertices and remove them from renderer
         self.vtk_mouse_interactor_style.vertices = []
         self.vtk_mouse_interactor_style.draw()
@@ -403,7 +267,7 @@ class Tachy2Gis:
 
     def setRefHeight(self):
         refHeight = self.dlg.setRefHeight.text()
-        self.tachyReader.setReflectorHeight(refHeight)
+        # self.tachyReader.setReflectorHeight(refHeight)
 
     def getRefHeight(self):
         self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
@@ -777,7 +641,7 @@ class Tachy2Gis:
             self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
             self.vtk_widget.refresh_content()
         self.setupControls()
-        self.availability_watchdog.start()
+        # self.availability_watchdog.start()
         self.tachyReader.start()
         # Store the active map tool and switch to the T2G_VertexPickerTool
         self.previousTool = self.iface.mapCanvas().mapTool()

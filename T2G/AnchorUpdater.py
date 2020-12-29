@@ -131,6 +131,10 @@ def unpack_multi_polygons(geometries):
     return unpacked
 
 
+def unpack_qgspoint(point):
+    return point.x(), point.y(), point.z()
+
+
 # TODO: Polygon holes get rendered as polygon, remove layer cache code, handle 2d geometries
 class VtkAnchorUpdater(AnchorUpdater):
     layer_cache = {}
@@ -152,11 +156,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             geometries = unpack_multi_polygons(geometries)
             for geometry in geometries:
                 poly = vtk.vtkPolygon()
-                for vertex in geometry[:-1]:
-                    if len(vertex) == 2:  # 2d geometries
-                        vertex = vertex[:2] + [0]
-                    else:
-                        vertex = vertex[:3]
+                for vertex in map(unpack_qgspoint, geometry[:-1]):
                     poly.GetPointIds().InsertNextId(point_index)
                     point_index += 1
                     anchors.InsertNextPoint(*vertex)

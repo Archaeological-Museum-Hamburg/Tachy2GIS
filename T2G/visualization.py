@@ -1,5 +1,6 @@
 import vtk
-from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
+from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsMessageLog, QgsVectorDataProvider, QgsVectorLayerUtils
+from qgis.gui import QgsAttributeDialog
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from random import random
@@ -56,14 +57,29 @@ class VtkLayer:
         raise NotImplementedError("Vtk layers have to implement this for each type of geometry")
 
     def add_feature(self, vertices, iface):
-        feat = QgsFeature()
-        geom = QgsGeometry.fromWkt(self.make_wkt(vertices))
-        feat.setGeometry(geom)
-        feat.setFields(self.source_layer.fields())
+        capabilities = self.source_layer.dataProvider().capabilities()
+        if not capabilities & QgsVectorDataProvider.AddFeatures:
+            QgsMessageLog.logMessage('data provider incapable')
+            return
+        if not self.source_layer.isEditable():
+            QgsMessageLog.logMessage('layer not editable')
+            self.source_layer.startEditing()
+        geometry = QgsGeometry.fromWkt(self.make_wkt(vertices))
+        triangle_wkt = "PolygonZ ((-0.70866141732283472 -0.21259842519685046 3, -0.34120734908136496 0.04986876640419946 3, -0.07874015748031482 -0.32808398950131235 3, -0.70866141732283472 -0.21259842519685046 3.4))"
+        # geometry = QgsGeometry.fromWkt(triangle_wkt)
+        feat = QgsVectorLayerUtils.createFeature(self.source_layer,
+                                                 geometry,
+                                                 {},
+                                                 self.source_layer.createExpressionContext())
 
-        if iface.openFeatureForm(self.source_layer, feat, False):
-            print('Feature added')
-            self.insert_geometry(vertices)
+        if QgsAttributeDialog(self.source_layer, feat, False).exec_():
+            self.source_layer.addFeature(feat)
+            QgsMessageLog.logMessage('Feature added')
+            self.source_layer.commitChanges()
+            # self.insert_geometry(vertices)
+        else:
+            QgsMessageLog.logMessage('layer rolled back')
+            self.source_layer.rollBack()
 
 
 class VtkPolyLayer(VtkLayer):
@@ -73,7 +89,7 @@ class VtkPolyLayer(VtkLayer):
         # wkt requires the first vertex to coincide with the last:
         if len(vertices) < 3 and vertices[-1] != vertices[0]:
             vertices.append(vertices[0])
-        vertexts = [vertex.get_coordinates() for vertex in vertices]
+        vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
         wkt = 'POLYGONZ(({0}))'.format(', '.join(vertexts))
         return wkt
 
@@ -83,7 +99,7 @@ class VtkPolyLayer(VtkLayer):
         for vertex in vertices:
             new_poly.GetPointIds().InsertNextId(point_index)
             point_index += 1
-            self.extractor.anchors.InsertNextPoint(*vertex.get_coordinates())
+            self.extractor.anchors.InsertNextPoint(*vertex)
         self.extractor.polies.InsertNextCell(new_poly)
 
     def get_actors(self, colour):
@@ -235,6 +251,14 @@ class VtkWidget(QVTKRenderWindowInteractor):
                 pointActor = created.get_actors(self.colour_provider.next())
                 self.renderer.AddActor(pointActor)
         self.refresh_content()
+
+    def refresh_layer(self, layer):
+        vtk_layer = self.layers.pop(layer.id())
+        actors = vtk_layer.vtkActor
+        if type(actors) != tuple:
+            actors = (actors, )
+        for actor in actors:
+            self.renderer.RemoveActor(actor)
 
     def refresh_content(self):
         # The mapper is responsible for pushing the geometry into the graphics
@@ -429,3 +453,4 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def mouse_move_event(self, obj, event):
         self.OnMouseMove()
         return
+

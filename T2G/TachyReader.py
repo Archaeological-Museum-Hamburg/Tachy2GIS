@@ -74,7 +74,6 @@ class TachyReader(QThread):
             gsi_ping.exec()
 
     def poll(self):
-        self.getRefHeight = self.getReflectorHeight()
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
@@ -159,6 +158,7 @@ class TachyReader(QThread):
     def getReflectorHeight(self):
         # self.ser.close()
         # self.ser.open(QSerialPort.ReadWrite)
+        QgsMessageLog.logMessage("Pollingqgis reflector height!")
         if self.ser.isOpen():
             self.ser.writeData(("%R1Q,2011:Height\r\n").encode('ascii'))
             # response = self.ser.readLine()  # PyQt5.QtCore.QByteArray(b'%R1P,0,0:0,3.141\r\n') 3.141 = Tachy height
