@@ -401,6 +401,17 @@ def parse(line):
     return extracted, units
 
 
+def make_vertex(line):
+    vtx_data = parse(line)[0]
+    if 'targetZ' not in list(vtx_data.keys()):
+        raise ValueError('No z coordinate in: ' + line)
+    label = vtx_data['pointId']
+    x = vtx_data['targetX']
+    y = vtx_data['targetY']
+    z = vtx_data['targetZ']
+    return x, y, z
+
+
 if __name__ == "__main__":
     testLine = '*11....+0000000000000473 21.022+0000000039809400 22.022+0000000010859950 31..00+0000000000000609 81..00+0000000565385748 82..00+0000005924615105 83..00+0000000000005224 87..10+0000000000000000 \r\n'
     parsed, units = parse(testLine)

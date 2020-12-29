@@ -48,13 +48,12 @@ from qgis.gui import QgsMapToolPan
 import vtk
 from PyQt5 import QtCore, QtWidgets
 
-from .T2G.VertexList import T2G_VertexList, T2G_Vertex
 from .T2G.TachyReader import TachyReader, AvailabilityWatchdog
 from .FieldDialog import FieldDialog
-from .T2G.VertexPickerTool import T2G_VertexePickerTool
 from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
+from .T2G.GSI_Parser import make_vertex
 from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle, VtkPolyLayer, VtkLineLayer, VtkPointLayer
 
 
@@ -116,20 +115,13 @@ class Tachy2Gis:
         # self.toolbar.setObjectName('Tachy2Gis')
 
         # From here: Own additions
-        self.vertexList = T2G_VertexList()
-        self.extent_provider = ExtentProvider(self.vertexList, self.iface.mapCanvas())
-        self.auto_zoomer = AutoZoomer(self.iface.mapCanvas(), self.extent_provider)
-
-        self.mapTool = T2G_VertexePickerTool(self)
-        self.previousTool = None
-        self.fieldDialog = FieldDialog(self.iface.activeLayer())
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
         self.availability_watchdog = AvailabilityWatchdog()
         self.availability_watchdog.start()
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
-        self.tachyReader.lineReceived.connect(self.vertexReceived)
+        self.tachyReader.lineReceived.connect(self.vertex_received)
         # self.tachyReader.beginListening()
         self.pluginIsActive = False
         self.dlg = None
@@ -137,21 +129,12 @@ class Tachy2Gis:
 
     NO_PORT = 'Select tachymeter USB port'
 
-    def vertexReceived(self, line):
-        newVtx = T2G_Vertex.fromGSI(line)
-        self.mapTool.addVertex(vtx=newVtx)
-        self.vtk_mouse_interactor_style.vertices.append((newVtx.x, newVtx.y, newVtx.z))
-        self.dlg.coords.setText(" ".join([str(newVtx.x), str(newVtx.y), str(newVtx.z)]))
+    def vertex_received(self, line):
+        new_vtx = make_vertex(line)
+        self.vtk_mouse_interactor_style.vertices.append(new_vtx)
+        self.dlg.coords.setText(f"{new_vtx}")
         self.vtk_mouse_interactor_style.draw()
 
-    ## Clears the map canvas and in turn the vertexList
-    def clearCanvas(self):
-        self.mapTool.clear()
-
-    def removeSelection(self):
-        self.dlg.targetLayerComboBox.currentLayer().removeSelection()
-
-    #
     def dump(self):
         vertices = self.vtk_mouse_interactor_style.vertices
         if len(vertices) == 0:
@@ -177,13 +160,6 @@ class Tachy2Gis:
         self.vtk_widget.layers.pop(layer.id())
         self.update_renderer()
 
-    ## Restores the map tool to the one that was active before T2G was started
-    #  The pan tool is the default tool used by QGIS
-    def restoreTool(self):
-        if self.previousTool is None:
-            self.previousTool = QgsMapToolPan(self.iface.mapCanvas())
-        self.iface.mapCanvas().setMapTool(self.previousTool)
-
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
         self.dlg.closingPlugin.disconnect(self.onCloseCleanup)
@@ -195,16 +171,12 @@ class Tachy2Gis:
         self.dlg.deleteVertexButton.clicked.disconnect()
         self.dlg.sourceLayerComboBox.layerChanged.disconnect()
         self.dlg.setRefHeight.returnPressed.disconnect()
-        self.fieldDialog.targetLayerComboBox.layerChanged.disconnect()
         # self.vertexList.layoutChanged.disconnect()
-        self.fieldDialog.buttonBox.accepted.disconnect()
         self.dlg.zoomResetButton.clicked.disconnect()
         self.dlg.setRefHeight.removeEventFilter(self.eventFilter)
         self.availability_watchdog.serial_available.disconnect()
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
-        self.restoreTool()
-        self.mapTool.clear()
         self.disconnectVisibilityChanged()
         self.disconnectMapLayers()
         #QgsProject.instance().legendLayersAdded.disconnect()
@@ -219,7 +191,6 @@ class Tachy2Gis:
         if activeLayer is None:
             return
         self.iface.setActiveLayer(activeLayer)
-        self.vertexList.updateAnchors(activeLayer)
         
     def targetChanged(self):
         targetLayer = self.fieldDialog.targetLayerComboBox.currentLayer()
@@ -382,15 +353,10 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.setExcludedProviders(["delimitedtext"])
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setActiveLayer)
-        self.dlg.sourceLayerComboBox.layerChanged.connect(self.mapTool.clear)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setPickable)
 
         self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
         self.dlg.targetLayerComboBox.setExcludedProviders(["delimitedtext"])
-        self.fieldDialog.targetLayerComboBox.layerChanged.connect(self.targetChanged)
-        # self.vertexList.layoutChanged.connect(self.dumpEnabled)
-        self.fieldDialog.buttonBox.accepted.connect(self.extent_provider.add_feature)
-        self.dlg.zoomResetButton.clicked.connect(self.extent_provider.reset)
         self.dlg.zoomResetButton.clicked.connect(self.resetVtkCamera)
 
         self.dlg.zoomModeComboBox.addItems(['Layer',
@@ -399,9 +365,6 @@ class Tachy2Gis:
                                             'Last 4 features',
                                             'Last 8 features',
                                             ])
-        self.dlg.zoomModeComboBox.currentIndexChanged.connect(self.extent_provider.set_mode)
-        # self.dlg.zoomActiveCheckBox.stateChanged.connect(self.auto_zoomer.set_active)
-        self.extent_provider.ready.connect(self.auto_zoomer.apply)
         self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
 
         self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -424,7 +387,6 @@ class Tachy2Gis:
         self.vtk_widget.Start()
 
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
-        self.vertexList.signal_anchors_updated.connect(self.update_renderer)
         # Connect signals for existing layers
         self.connectVisibilityChanged()
         self.connectMapLayers()
@@ -644,13 +606,11 @@ class Tachy2Gis:
         # self.availability_watchdog.start()
         self.tachyReader.start()
         # Store the active map tool and switch to the T2G_VertexPickerTool
-        self.previousTool = self.iface.mapCanvas().mapTool()
-        self.iface.mapCanvas().setMapTool(self.mapTool)
-        self.mapTool.alive = True
         self.setActiveLayer()
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
         self.dlg.setRefHeight.installEventFilter(self.eventFilter)
         self.dlg.show()
+        self.update_renderer()
         # Tries to connect to tachy and also starts the tachymeter if it's off
         # self.tachyReader.hook_up()
 

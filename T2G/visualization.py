@@ -44,10 +44,7 @@ class VtkLayer:
         self.geometries = self.extractor.geometries
         self.poly_data = self.extractor.poly_data
 
-    def update(self, dialog):
-        self.extractor.signalAnchorCount.connect(dialog.setAnchorCount)
-        self.extractor.signalAnchorProgress.connect(dialog.anchorProgress)
-        self.extractor.signalGeometriesProgress.connect(dialog.geometriesProgress)
+    def update(self):
         self.poly_data = self.extractor.startExtraction()
 
     def make_wkt(self, vertices):
@@ -231,6 +228,7 @@ class VtkWidget(QVTKRenderWindowInteractor):
             if geoType == QgsWkbTypes.PolygonGeometry:
                 print(self.layers)
                 created = VtkPolyLayer(qgs_layer=qgis_layer)
+                created.update()
                 print('made a new one!')
                 self.layers[layer_id] = created
                 actor, edge_actor = created.get_actors(self.colour_provider.next())
