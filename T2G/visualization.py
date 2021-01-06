@@ -53,7 +53,7 @@ class VtkLayer:
     def insert_geometry(self, vertices):
         raise NotImplementedError("Vtk layers have to implement this for each type of geometry")
 
-    def add_feature(self, vertices, iface):
+    def add_feature(self, vertices):
         capabilities = self.source_layer.dataProvider().capabilities()
         if not capabilities & QgsVectorDataProvider.AddFeatures:
             QgsMessageLog.logMessage('data provider incapable')
@@ -62,7 +62,7 @@ class VtkLayer:
             QgsMessageLog.logMessage('layer not editable')
             self.source_layer.startEditing()
         geometry = QgsGeometry.fromWkt(self.make_wkt(vertices))
-        triangle_wkt = "PolygonZ ((-0.70866141732283472 -0.21259842519685046 3, -0.34120734908136496 0.04986876640419946 3, -0.07874015748031482 -0.32808398950131235 3, -0.70866141732283472 -0.21259842519685046 3.4))"
+        # triangle_wkt = "PolygonZ ((-0.70866141732283472 -0.21259842519685046 3, -0.34120734908136496 0.04986876640419946 3, -0.07874015748031482 -0.32808398950131235 3, -0.70866141732283472 -0.21259842519685046 3.4))"
         # geometry = QgsGeometry.fromWkt(triangle_wkt)
         feat = QgsVectorLayerUtils.createFeature(self.source_layer,
                                                  geometry,
@@ -70,7 +70,7 @@ class VtkLayer:
                                                  self.source_layer.createExpressionContext())
 
         if QgsAttributeDialog(self.source_layer, feat, False).exec_():
-            self.source_layer.addFeature(feat)
+            self.source_layer.dataProvider().addFeature(feat)
             QgsMessageLog.logMessage('Feature added')
             self.source_layer.commitChanges()
             # self.insert_geometry(vertices)
@@ -82,12 +82,12 @@ class VtkLayer:
 class VtkPolyLayer(VtkLayer):
     vtkActor = None
 
+    # TODO: len(vertices) < 3 unhandled, support other WkbTypes
     def make_wkt(self, vertices):
         # wkt requires the first vertex to coincide with the last:
-        if len(vertices) < 3 and vertices[-1] != vertices[0]:
-            vertices.append(vertices[0])
+        vertices.append(vertices[0])
         vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
-        wkt = 'POLYGONZ(({0}))'.format(', '.join(vertexts))
+        wkt = 'MultiPolygonZ((({0})))'.format(', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
@@ -98,6 +98,8 @@ class VtkPolyLayer(VtkLayer):
             point_index += 1
             self.extractor.anchors.InsertNextPoint(*vertex)
         self.extractor.polies.InsertNextCell(new_poly)
+        self.extractor.poly_data.SetPoints(self.extractor.anchors)
+        self.extractor.poly_data.SetPolys(self.extractor.polies)
 
     def get_actors(self, colour):
         # poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
@@ -143,22 +145,22 @@ class VtkPolyLayer(VtkLayer):
 class VtkLineLayer(VtkLayer):
     vtkActor = None
 
+    # TODO: len(vertices) < 2 unhandled, support other WkbTypes
     def make_wkt(self, vertices):
-        # wkt requires the first vertex to coincide with the last:
-        if len(vertices) < 3 and vertices[-1] != vertices[0]:
-            vertices.append(vertices[0])
-        vertexts = [vertex.get_coordinates() for vertex in vertices]
-        wkt = 'POLYGONZ(({0}))'.format(', '.join(vertexts))
+        vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+        wkt = 'MultiLineStringZ(({0}))'.format(', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
         point_index = self.extractor.anchors.GetNumberOfPoints() + 1
-        new_poly = vtk.vtkPolygon()
+        new_poly = vtk.vtkPolyline()
         for vertex in vertices:
             new_poly.GetPointIds().InsertNextId(point_index)
             point_index += 1
-            self.extractor.anchors.InsertNextPoint(*vertex.get_coordinates())
+            self.extractor.anchors.InsertNextPoint(*vertex)
         self.extractor.polies.InsertNextCell(new_poly)
+        self.extractor.poly_data.SetPoints(self.extractor.anchors)
+        self.extractor.poly_data.SetLines(self.extractor.polies)
 
     def get_actors(self, colour):
         poly_data = self.extractor.startExtraction()
@@ -176,22 +178,22 @@ class VtkLineLayer(VtkLayer):
 class VtkPointLayer(VtkLayer):
     vtkActor = None
 
+    # TODO: Only adds first selected point, support other WkbTypes
     def make_wkt(self, vertices):
-        # wkt requires the first vertex to coincide with the last:
-        if len(vertices) < 3 and vertices[-1] != vertices[0]:
-            vertices.append(vertices[0])
-        vertexts = [vertex.get_coordinates() for vertex in vertices]
-        wkt = 'POLYGONZ(({0}))'.format(', '.join(vertexts))
+        vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+        wkt = 'MultiPointZ(({0}))'.format(', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
         point_index = self.extractor.anchors.GetNumberOfPoints() + 1
-        new_poly = vtk.vtkPolygon()
+        new_poly = vtk.vtkPoints()
         for vertex in vertices:
             new_poly.GetPointIds().InsertNextId(point_index)
             point_index += 1
-            self.extractor.anchors.InsertNextPoint(*vertex.get_coordinates())
+            self.extractor.anchors.InsertNextPoint(*vertex)
         self.extractor.polies.InsertNextCell(new_poly)
+        self.extractor.poly_data.SetPoints(self.extractor.anchors)
+        self.extractor.poly_data.SetVerts(self.extractor.polies)
 
     def get_actors(self, colour):
         poly_data = self.extractor.startExtraction()

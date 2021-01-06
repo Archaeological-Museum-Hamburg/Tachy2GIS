@@ -143,7 +143,7 @@ class Tachy2Gis:
 
         targetLayer = self.dlg.targetLayerComboBox.currentLayer()
         vtk_layer = self.vtk_widget.layers[targetLayer.id()]
-        vtk_layer.add_feature(vertices, iface)
+        vtk_layer.add_feature(vertices)
 
         # clear picked vertices and remove them from renderer
         self.vtk_mouse_interactor_style.vertices = []
