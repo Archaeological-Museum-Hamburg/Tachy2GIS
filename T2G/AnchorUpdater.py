@@ -132,7 +132,7 @@ def unpack_multi_polygons(geometries):
 
 
 def unpack_qgspoint(point):
-    return point[0], point[1], point[2]
+    return point.x(), point.y(), point.z()
 
 
 # TODO: Polygon holes get rendered as polygon, remove layer cache code, handle 2d geometries
