@@ -39,6 +39,8 @@ class VtkLayer:
         self.source_layer = qgs_layer
         self.id = self.source_layer.id()
         self.geoType = self.source_layer.geometryType()
+        self.wkbTypeName = QgsWkbTypes.displayString(self.source_layer.wkbType())
+        self.isMulti = QgsWkbTypes.isMultiType(self.source_layer.wkbType())
         self.extractor = VtkAnchorUpdater(layer=self.source_layer, geoType=self.geoType)
         self.anchors = self.extractor.anchors
         self.geometries = self.extractor.geometries
@@ -82,12 +84,22 @@ class VtkLayer:
 class VtkPolyLayer(VtkLayer):
     vtkActor = None
 
-    # TODO: len(vertices) < 3 unhandled, support other WkbTypes
+    # TODO: len(vertices) < 3 unhandled
     def make_wkt(self, vertices):
         # wkt requires the first vertex to coincide with the last:
         vertices.append(vertices[0])
-        vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
-        wkt = 'MultiPolygonZ((({0})))'.format(', '.join(vertexts))
+        if ('Z' or 'M') not in self.wkbTypeName[-2:]:
+            vertexts = [f'{v[0]} {v[1]}' for v in vertices]
+        elif self.wkbTypeName[-2:] == 'ZM':
+            vertexts = [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
+        elif self.wkbTypeName[-1] == 'M':
+            vertexts = [f'{v[0]} {v[1]} {0.0}' for v in vertices]
+        else:
+            vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+        if self.isMulti:
+            wkt = '{0}((({1})))'.format(self.wkbTypeName, ', '.join(vertexts))
+        else:
+            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
@@ -145,10 +157,20 @@ class VtkPolyLayer(VtkLayer):
 class VtkLineLayer(VtkLayer):
     vtkActor = None
 
-    # TODO: len(vertices) < 2 unhandled, support other WkbTypes
+    # TODO: len(vertices) < 2 unhandled, isMulti not needed?
     def make_wkt(self, vertices):
-        vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
-        wkt = 'MultiLineStringZ(({0}))'.format(', '.join(vertexts))
+        if ('Z' or 'M') not in self.wkbTypeName[-2:]:
+            vertexts = [f'{v[0]} {v[1]}' for v in vertices]
+        elif self.wkbTypeName[-2:] == 'ZM':
+            vertexts = [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
+        elif self.wkbTypeName[-1] == 'M':
+            vertexts = [f'{v[0]} {v[1]} {0.0}' for v in vertices]
+        else:
+            vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+        if self.isMulti:
+            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
+        else:
+            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
@@ -180,8 +202,18 @@ class VtkPointLayer(VtkLayer):
 
     # TODO: Only adds first selected point, support other WkbTypes
     def make_wkt(self, vertices):
-        vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
-        wkt = 'MultiPointZ(({0}))'.format(', '.join(vertexts))
+        if ('Z' or 'M') not in self.wkbTypeName[-2:]:
+            vertexts = [f'{v[0]} {v[1]}' for v in vertices]
+        elif self.wkbTypeName[-2:] == 'ZM':
+            vertexts = [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
+        elif self.wkbTypeName[-1] == 'M':
+            vertexts = [f'{v[0]} {v[1]} {0.0}' for v in vertices]
+        else:
+            vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+        if self.isMulti:
+            wkt = '{0}((({1})))'.format(self.wkbTypeName, ', '.join(vertexts))
+        else:
+            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
@@ -453,4 +485,3 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def mouse_move_event(self, obj, event):
         self.OnMouseMove()
         return
-

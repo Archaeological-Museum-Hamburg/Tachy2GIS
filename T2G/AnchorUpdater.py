@@ -120,19 +120,44 @@ def unpack_multi_polygons(geometries):
             if len(coordinates) > 1:
                 for i in range(1, len(coordinates)):
                     unpacked += coordinates[i]
+            # Convert points to QgsPoint
+            for i in range(len(unpacked)):
+                for j in range(len(unpacked[i])):
+                    # Try, because some points are already QgsPoint although unpacked doesn't have any
+                    try:
+                        unpacked[i][j] = QgsPoint(*unpacked[i][j])
+                    except:
+                        pass
         elif geo.asWkt().startswith('MultiLine'):
             coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
             unpacked.append(coordinates[0])
             if len(coordinates) > 1:
                 for i in range(1, len(coordinates)):
                     unpacked.append(coordinates[i])
+            for i in range(len(unpacked)):
+                for j in range(len(unpacked[i])):
+                    # Try, because some points are already QgsPoint although unpacked doesn't have any
+                    try:
+                        unpacked[i][j] = QgsPoint(*unpacked[i][j])
+                    except:
+                        pass
         else:
             unpacked.append(list(geo.vertices()))
+            for i in range(len(unpacked)):
+                for j in range(len(unpacked[i])):
+                    # Try, because some points are already QgsPoint although unpacked doesn't have any
+                    try:
+                        unpacked[i][j] = QgsPoint(*unpacked[i][j])
+                    except:
+                        pass
     return unpacked
 
 
 def unpack_qgspoint(point):
-    return point.x(), point.y(), point.z()
+    if point.is3D():
+        return point.x(), point.y(), point.z()
+    else:
+        return point.x(), point.y(), 0.0
 
 
 # TODO: Polygon holes get rendered as polygon, remove layer cache code, handle 2d geometries
@@ -187,7 +212,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             index = 0
             for geometry in geometries:
                 polyLine = vtk.vtkPolyLine()
-                for vertex in geometry:
+                for vertex in map(unpack_qgspoint, geometry):
                     polyLine.GetPointIds().InsertNextId(index)
                     linePoints.InsertNextPoint(*vertex)
                     index += 1
