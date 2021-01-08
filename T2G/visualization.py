@@ -35,6 +35,8 @@ class ColourProvider:
 
 
 class VtkLayer:
+    vtkActor = None
+
     def __init__(self, qgs_layer):
         self.source_layer = qgs_layer
         self.id = self.source_layer.id()
@@ -49,7 +51,7 @@ class VtkLayer:
     def update(self):
         self.poly_data = self.extractor.startExtraction()
 
-    def make_wkt(self, vertices):
+    def make_vertexts(self, vertices):
         raise NotImplementedError("Vtk layers have to implement this for each type of geometry")
 
     def insert_geometry(self, vertices):
@@ -60,58 +62,70 @@ class VtkLayer:
         if not capabilities & QgsVectorDataProvider.AddFeatures:
             QgsMessageLog.logMessage('data provider incapable')
             return
-        if not self.source_layer.isEditable():
-            QgsMessageLog.logMessage('layer not editable')
+        wktGeo = self.make_wkt(vertices)
+        if isinstance(wktGeo, list):
+            # This only happens for multiple single point geos ->
+            # It has to be moved there as soon as they have their
+            # own VtkLayer type.
+            features = []
+            for geo in wktGeo:
+                features.append(QgsVectorLayerUtils.createFeature(self.source_layer,
+                                                                  QgsGeometry.fromWkt(geo),
+                                                                  {},
+                                                                  self.source_layer.createExpressionContext()))
+        else:
+            geometry = QgsGeometry.fromWkt(wktGeo)
+            features = [QgsVectorLayerUtils.createFeature(self.source_layer,
+                                                          geometry,
+                                                          {},
+                                                          self.source_layer.createExpressionContext())]
+        for feat in features:
             self.source_layer.startEditing()
-        geometry = QgsGeometry.fromWkt(self.make_wkt(vertices))
-        # triangle_wkt = "PolygonZ ((-0.70866141732283472 -0.21259842519685046 3, -0.34120734908136496 0.04986876640419946 3, -0.07874015748031482 -0.32808398950131235 3, -0.70866141732283472 -0.21259842519685046 3.4))"
-        # geometry = QgsGeometry.fromWkt(triangle_wkt)
-        feat = QgsVectorLayerUtils.createFeature(self.source_layer,
-                                                 geometry,
-                                                 {},
-                                                 self.source_layer.createExpressionContext())
-
-        if QgsAttributeDialog(self.source_layer, feat, False).exec_():
-            self.source_layer.dataProvider().addFeature(feat)
-            QgsMessageLog.logMessage('Feature added')
-            self.source_layer.commitChanges()
-            # self.insert_geometry(vertices)
-        else:
-            QgsMessageLog.logMessage('layer rolled back')
-            self.source_layer.rollBack()
+            if QgsAttributeDialog(self.source_layer, feat, False).exec_():
+                self.source_layer.dataProvider().addFeatures([feat])
+                QgsMessageLog.logMessage('Feature added')
+                self.source_layer.commitChanges()
+            else:
+                QgsMessageLog.logMessage('layer rolled back')
+                self.source_layer.rollBack()
 
 
-class VtkPolyLayer(VtkLayer):
-    vtkActor = None
-
-    # TODO: len(vertices) < 3 unhandled
+class MixinSingle:
     def make_wkt(self, vertices):
-        # wkt requires the first vertex to coincide with the last:
-        vertices.append(vertices[0])
-        if ('Z' or 'M') not in self.wkbTypeName[-2:]:
-            vertexts = [f'{v[0]} {v[1]}' for v in vertices]
-        elif self.wkbTypeName[-2:] == 'ZM':
-            vertexts = [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
-        elif self.wkbTypeName[-1] == 'M':
-            vertexts = [f'{v[0]} {v[1]} {0.0}' for v in vertices]
-        else:
-            vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
-        if self.isMulti:
-            wkt = '{0}((({1})))'.format(self.wkbTypeName, ', '.join(vertexts))
-        else:
-            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
+        vertexts = self.make_vertexts(vertices)
+        wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
-    def insert_geometry(self, vertices):
-        point_index = self.extractor.anchors.GetNumberOfPoints() + 1
-        new_poly = vtk.vtkPolygon()
-        for vertex in vertices:
-            new_poly.GetPointIds().InsertNextId(point_index)
-            point_index += 1
-            self.extractor.anchors.InsertNextPoint(*vertex)
-        self.extractor.polies.InsertNextCell(new_poly)
-        self.extractor.poly_data.SetPoints(self.extractor.anchors)
-        self.extractor.poly_data.SetPolys(self.extractor.polies)
+
+class MixinMulti:
+    def make_wkt(self, vertices):
+        vertexts = self.make_vertexts()
+        wkt = f"{self.wkbTypeName}((({', '.join(vertexts)})))"
+        return wkt
+
+
+class Mixin2D:
+    def make_vertexts(self, vertices):
+        return [f'{v[0]} {v[1]}' for v in vertices]
+
+
+class Mixin3D:
+    def make_vertexts(self, vertices):
+        return [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+
+
+class MixinZM:
+    def make_vertexts(self, vertices):
+        return [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
+
+
+class MixinM:
+    def make_vertexts(self, vertices):
+        return [f'{v[0]} {v[1]} {0.0}' for v in vertices]
+
+
+class VtkPolyLayer(VtkLayer, Mixin2D, MixinSingle):
+    # TODO: len(vertices) < 3 unhandled
 
     def get_actors(self, colour):
         # poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
@@ -151,13 +165,40 @@ class VtkPolyLayer(VtkLayer):
         actor.GetProperty().SetColor(colour)
 
         self.vtkActor = actor, edgeActor
-        return actor, edgeActor
+        return [actor, edgeActor]
 
 
-class VtkLineLayer(VtkLayer):
-    vtkActor = None
+class VtkPolygonZLayer(VtkPolyLayer, Mixin3D):
+    pass
 
+
+class VtkPolygonMLayer(VtkPolyLayer, MixinM):
+    pass
+
+
+class VtkPolygonZMLayer(VtkPolyLayer, MixinZM):
+    pass
+
+
+class VtkMultiPolyLayer(VtkPolyLayer, MixinMulti):
+    pass
+
+
+class VtkMultiPolygonZLayer(VtkPolygonZLayer, MixinMulti):
+    pass
+
+
+class VtkMultiPolygonMLayer(VtkPolygonMLayer, MixinMulti):
+    pass
+
+
+class VtkMultiPolygonZMLayer(VtkPolygonZMLayer, MixinMulti):
+    pass
+
+
+class VtkLineLayer(VtkLayer, Mixin2D, MixinSingle):
     # TODO: len(vertices) < 2 unhandled, isMulti not needed?
+    """
     def make_wkt(self, vertices):
         if ('Z' or 'M') not in self.wkbTypeName[-2:]:
             vertexts = [f'{v[0]} {v[1]}' for v in vertices]
@@ -172,6 +213,7 @@ class VtkLineLayer(VtkLayer):
         else:
             wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
+    """
 
     def insert_geometry(self, vertices):
         point_index = self.extractor.anchors.GetNumberOfPoints() + 1
@@ -194,26 +236,56 @@ class VtkLineLayer(VtkLayer):
         lineActor.GetProperty().SetLineWidth(3)
 
         self.vtkActor = lineActor
-        return lineActor
+        return [lineActor]
+
+
+class VtkLineZLayer(VtkLineLayer, Mixin3D):
+    pass
+
+
+class VtkLineMLayer(VtkLineLayer, MixinM):
+    pass
+
+
+class VtkLineZMLayer(VtkLineLayer, MixinZM):
+    pass
+
+
+class VtkMultiLineLayer(VtkLineLayer, MixinMulti):
+    pass
+
+
+class VtkMultiLineZLayer(VtkMultiLineLayer, Mixin3D):
+    pass
+
+
+class VtkMultiLineMLayer(VtkLineMLayer, MixinMulti):
+    pass
+
+
+class VtkMultiLineZMLayer(VtkMultiLineLayer, MixinZM):
+    pass
 
 
 class VtkPointLayer(VtkLayer):
-    vtkActor = None
-
     # TODO: Only adds first selected point, support other WkbTypes
     def make_wkt(self, vertices):
         if ('Z' or 'M') not in self.wkbTypeName[-2:]:
-            vertexts = [f'{v[0]} {v[1]}' for v in vertices]
+            vertexts = [f'({v[0]} {v[1]})' for v in vertices]
         elif self.wkbTypeName[-2:] == 'ZM':
-            vertexts = [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
+            vertexts = [f'({v[0]} {v[1]} {v[2]} {0.0})' for v in vertices]
         elif self.wkbTypeName[-1] == 'M':
-            vertexts = [f'{v[0]} {v[1]} {0.0}' for v in vertices]
+            vertexts = [f'({v[0]} {v[1]} {0.0})' for v in vertices]
         else:
-            vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
+            vertexts = [f'({v[0]} {v[1]} {v[2]})' for v in vertices]
         if self.isMulti:
-            wkt = '{0}((({1})))'.format(self.wkbTypeName, ', '.join(vertexts))
+            wkt = '{0}({1})'.format(self.wkbTypeName, ', '.join(vertexts))
         else:
-            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
+            wkt = []
+            for v in vertexts:
+                wkt.append('{0}{1}'.format(self.wkbTypeName, v))
+                print("wktwkt: ", wkt)
+                # wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
     def insert_geometry(self, vertices):
@@ -238,10 +310,37 @@ class VtkPointLayer(VtkLayer):
         pointActor.GetProperty().SetColor(colour)
 
         self.vtkActor = pointActor
-        return pointActor
+        return [pointActor]
 
 
 class VtkWidget(QVTKRenderWindowInteractor):
+    layer_type_map = {
+        'Polygon': VtkPolyLayer,
+        'PolygonM': VtkPolygonMLayer,
+        'PolygonZ': VtkPolygonZLayer,
+        'PolygonZM': VtkPolygonZMLayer,
+        'MultiPolygon': VtkMultiPolyLayer,
+        'MultiPolygonZ': VtkMultiPolygonZLayer,
+        'MultiPolygonM': VtkMultiPolygonMLayer,
+        'MultiPolygonZM': VtkMultiPolygonZMLayer,
+        'LineString': VtkLineLayer,
+        'LineStringM': VtkLineMLayer,
+        'LineStringZ': VtkLineZLayer,
+        'LineStringZM': VtkLineZMLayer,
+        'MultiLineString': VtkLineLayer,
+        'MultiLineStringM': VtkMultiLineMLayer,
+        'MultiLineStringZ': VtkMultiLineZLayer,
+        'MultiLineStringZM': VtkMultiLineZMLayer,
+        'Point': VtkPointLayer,
+        'PointM': VtkPointLayer,
+        'PointZ': VtkPointLayer,
+        'PointZM': VtkPointLayer,
+        'MultiPoint': VtkPointLayer,
+        'MultiPointM': VtkPointLayer,
+        'MultiPointZ': VtkPointLayer,
+        'MultiPointZM': VtkPointLayer
+    }
+
     def __init__(self, widget):
         self.renderer = vtk.vtkRenderer()
         self.axes = vtk.vtkAxesActor()
@@ -253,35 +352,20 @@ class VtkWidget(QVTKRenderWindowInteractor):
 
     def switch_layer(self, qgis_layer):
         layer_id = qgis_layer.id()
-        if qgis_layer.type() != 1:  # Raster layers have no geometryType() method
-            geoType = qgis_layer.geometryType()
-        else:
-            geoType = None
-        print(layer_id)
-        if layer_id not in self.layers.keys():
-            if geoType == QgsWkbTypes.PolygonGeometry:
+        type_name = QgsWkbTypes.displayString(qgis_layer.wkbType())
+        if type_name in VtkWidget.layer_type_map.keys():
+            print(layer_id)
+            if layer_id not in self.layers.keys():
+                layer_type = VtkWidget.layer_type_map[type_name]
                 print(self.layers)
-                created = VtkPolyLayer(qgs_layer=qgis_layer)
+                created = layer_type(qgs_layer=qgis_layer)
                 created.update()
                 print('made a new one!')
                 self.layers[layer_id] = created
-                actor, edge_actor = created.get_actors(self.colour_provider.next())
-                self.renderer.AddActor(actor)
-                self.renderer.AddActor(edge_actor)
-            if geoType == QgsWkbTypes.LineGeometry:
-                print(self.layers)
-                created = VtkLineLayer(qgs_layer=qgis_layer)
-                print('made a new one!')
-                self.layers[layer_id] = created
-                lineActor = created.get_actors(self.colour_provider.next())
-                self.renderer.AddActor(lineActor)
-            if geoType == QgsWkbTypes.PointGeometry:
-                print(self.layers)
-                created = VtkPointLayer(qgs_layer=qgis_layer)
-                print('made a new one!')
-                self.layers[layer_id] = created
-                pointActor = created.get_actors(self.colour_provider.next())
-                self.renderer.AddActor(pointActor)
+                for actor in created.get_actors(self.colour_provider.next()):
+                    self.renderer.AddActor(actor)
+        else:
+            print(f"No class defined for {type_name}")
         self.refresh_content()
 
     def refresh_layer(self, layer):

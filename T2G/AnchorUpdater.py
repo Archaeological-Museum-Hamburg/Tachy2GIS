@@ -127,7 +127,7 @@ def unpack_multi_polygons(geometries):
                     try:
                         unpacked[i][j] = QgsPoint(*unpacked[i][j])
                     except:
-                        pass
+                        print(unpacked[i][j])
         elif geo.asWkt().startswith('MultiLine'):
             coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
             unpacked.append(coordinates[0])
@@ -237,8 +237,8 @@ class VtkAnchorUpdater(AnchorUpdater):
             v_cells = vtk.vtkCellArray()
             geometries = unpack_multi_polygons(geometries)
             for geometry in geometries:
-                for vertex in geometry:
-                    pid = points.InsertNextPoint(vertex.x(), vertex.y(), vertex.z())
+                for vertex in map(unpack_qgspoint, geometry):
+                    pid = points.InsertNextPoint(*vertex)
                     v_cells.InsertNextCell(1, [pid])
 
             pointData = vtk.vtkPolyData()
