@@ -124,10 +124,11 @@ def unpack_multi_polygons(geometries):
             for i in range(len(unpacked)):
                 for j in range(len(unpacked[i])):
                     # Try, because some points are already QgsPoint although unpacked doesn't have any
+                    # TODO: This has to go away
                     try:
                         unpacked[i][j] = QgsPoint(*unpacked[i][j])
                     except:
-                        print(unpacked[i][j])
+                        pass
         elif geo.asWkt().startswith('MultiLine'):
             coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
             unpacked.append(coordinates[0])

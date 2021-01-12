@@ -54,8 +54,7 @@ from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
 from .T2G.GSI_Parser import make_vertex
-from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle, VtkPolyLayer, VtkLineLayer, VtkPointLayer
-
+from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle, VtkLineLayer
 
 def make_axes_actor(scale, xyzLabels):
     axes = vtk.vtkAxesActor()
@@ -143,8 +142,11 @@ class Tachy2Gis:
 
         targetLayer = self.dlg.targetLayerComboBox.currentLayer()
         vtk_layer = self.vtk_widget.layers[targetLayer.id()]
-        vtk_layer.add_feature(vertices)
-
+        try:
+            vtk_layer.add_feature(vertices)
+        except Exception as e:
+            print(vtk_layer.wkbTypeName)
+            raise e
         # clear picked vertices and remove them from renderer
         self.vtk_mouse_interactor_style.vertices = []
         self.vtk_mouse_interactor_style.draw()

@@ -51,12 +51,6 @@ class VtkLayer:
     def update(self):
         self.poly_data = self.extractor.startExtraction()
 
-    def make_vertexts(self, vertices):
-        raise NotImplementedError("Vtk layers have to implement this for each type of geometry")
-
-    def insert_geometry(self, vertices):
-        raise NotImplementedError("Vtk layers have to implement this for each type of geometry")
-
     def add_feature(self, vertices):
         capabilities = self.source_layer.dataProvider().capabilities()
         if not capabilities & QgsVectorDataProvider.AddFeatures:
@@ -99,7 +93,7 @@ class MixinSingle:
 
 class MixinMulti:
     def make_wkt(self, vertices):
-        vertexts = self.make_vertexts()
+        vertexts = self.make_vertexts(vertices)
         wkt = f"{self.wkbTypeName}((({', '.join(vertexts)})))"
         return wkt
 
@@ -168,35 +162,47 @@ class VtkPolyLayer(VtkLayer, Mixin2D, MixinSingle):
         return [actor, edgeActor]
 
 
-class VtkPolygonZLayer(VtkPolyLayer, Mixin3D):
-    pass
+class VtkPolygonLayer(VtkPolyLayer):
+    make_vertexts = Mixin2D.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkPolygonMLayer(VtkPolyLayer, MixinM):
-    pass
+class VtkPolygonZLayer(VtkPolyLayer):
+    make_vertexts = Mixin3D.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkPolygonZMLayer(VtkPolyLayer, MixinZM):
-    pass
+class VtkPolygonMLayer(VtkPolyLayer):
+    make_vertexts = MixinM.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkMultiPolyLayer(VtkPolyLayer, MixinMulti):
-    pass
+class VtkPolygonZMLayer(VtkPolyLayer):
+    make_vertexts = MixinZM.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkMultiPolygonZLayer(VtkPolygonZLayer, MixinMulti):
-    pass
+class VtkMultiPolygonLayer(VtkPolyLayer):
+    make_vertexts = Mixin2D.make_vertexts
+    make_wkt = MixinMulti.make_wkt
 
 
-class VtkMultiPolygonMLayer(VtkPolygonMLayer, MixinMulti):
-    pass
+class VtkMultiPolygonZLayer(VtkPolyLayer):
+    make_vertexts = Mixin3D.make_vertexts
+    make_wkt = MixinMulti.make_wkt
 
 
-class VtkMultiPolygonZMLayer(VtkPolygonZMLayer, MixinMulti):
-    pass
+class VtkMultiPolygonMLayer(MixinM, MixinMulti, VtkPolyLayer):
+    make_vertexts = MixinM.make_vertexts
+    make_wkt = MixinMulti.make_wkt
 
 
-class VtkLineLayer(VtkLayer, Mixin2D, MixinSingle):
+class VtkMultiPolygonZMLayer(MixinZM, MixinMulti, VtkPolyLayer):
+    make_vertexts = MixinZM.make_vertexts
+    make_wkt = MixinMulti.make_wkt
+
+
+class VtkLineLayer(VtkLayer):
     # TODO: len(vertices) < 2 unhandled, isMulti not needed?
     """
     def make_wkt(self, vertices):
@@ -239,32 +245,44 @@ class VtkLineLayer(VtkLayer, Mixin2D, MixinSingle):
         return [lineActor]
 
 
-class VtkLineZLayer(VtkLineLayer, Mixin3D):
-    pass
+class VtkLineStringLayer(VtkLineLayer):
+    make_vertexts = Mixin2D.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkLineMLayer(VtkLineLayer, MixinM):
-    pass
+class VtkLineStringZLayer(VtkLineLayer):
+    make_vertexts = Mixin3D.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkLineZMLayer(VtkLineLayer, MixinZM):
-    pass
+class VtkLineStringMLayer(VtkLineLayer):
+    make_vertexts = MixinM.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkMultiLineLayer(VtkLineLayer, MixinMulti):
-    pass
+class VtkLineStringZMLayer(VtkLineLayer):
+    make_vertexts = MixinZM.make_vertexts
+    make_wkt = MixinSingle.make_wkt
 
 
-class VtkMultiLineZLayer(VtkMultiLineLayer, Mixin3D):
-    pass
+class VtkMultiLineStringLayer(VtkLineLayer):
+    make_vertexts = Mixin2D.make_vertexts
+    make_wkt = MixinMulti.make_wkt
 
 
-class VtkMultiLineMLayer(VtkLineMLayer, MixinMulti):
-    pass
+class VtkMultiLineStringZLayer(VtkLineLayer):
+    make_vertexts = Mixin3D.make_vertexts
+    make_wkt = MixinMulti.make_wkt
 
 
-class VtkMultiLineZMLayer(VtkMultiLineLayer, MixinZM):
-    pass
+class VtkMultiLineStringMLayer(VtkLineLayer):
+    make_vertexts = MixinM.make_vertexts
+    make_wkt = MixinMulti.make_wkt
+
+
+class VtkMultiLineStringZMLayer(VtkLineLayer):
+    make_vertexts = MixinZM.make_vertexts
+    make_wkt = MixinMulti.make_wkt
 
 
 class VtkPointLayer(VtkLayer):
@@ -315,22 +333,22 @@ class VtkPointLayer(VtkLayer):
 
 class VtkWidget(QVTKRenderWindowInteractor):
     layer_type_map = {
-        'Polygon': VtkPolyLayer,
+        'Polygon': VtkPolygonLayer,
         'PolygonM': VtkPolygonMLayer,
         'PolygonZ': VtkPolygonZLayer,
         'PolygonZM': VtkPolygonZMLayer,
-        'MultiPolygon': VtkMultiPolyLayer,
+        'MultiPolygon': VtkMultiPolygonLayer,
         'MultiPolygonZ': VtkMultiPolygonZLayer,
         'MultiPolygonM': VtkMultiPolygonMLayer,
         'MultiPolygonZM': VtkMultiPolygonZMLayer,
-        'LineString': VtkLineLayer,
-        'LineStringM': VtkLineMLayer,
-        'LineStringZ': VtkLineZLayer,
-        'LineStringZM': VtkLineZMLayer,
-        'MultiLineString': VtkLineLayer,
-        'MultiLineStringM': VtkMultiLineMLayer,
-        'MultiLineStringZ': VtkMultiLineZLayer,
-        'MultiLineStringZM': VtkMultiLineZMLayer,
+        'LineString': VtkLineStringLayer,
+        'LineStringM': VtkLineStringMLayer,
+        'LineStringZ': VtkLineStringZLayer,
+        'LineStringZM': VtkLineStringZMLayer,
+        'MultiLineString': VtkMultiLineStringLayer,
+        'MultiLineStringM': VtkMultiLineStringMLayer,
+        'MultiLineStringZ': VtkMultiLineStringZLayer,
+        'MultiLineStringZM': VtkMultiLineStringZMLayer,
         'Point': VtkPointLayer,
         'PointM': VtkPointLayer,
         'PointZ': VtkPointLayer,
