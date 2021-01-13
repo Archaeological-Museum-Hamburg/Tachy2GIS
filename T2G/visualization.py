@@ -231,7 +231,6 @@ class VtkLineLayer(VtkLayer):
         else:
             wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
-    """
 
     def insert_geometry(self, vertices):
         point_index = self.extractor.anchors.GetNumberOfPoints() + 1
@@ -243,6 +242,7 @@ class VtkLineLayer(VtkLayer):
         self.extractor.polies.InsertNextCell(new_poly)
         self.extractor.poly_data.SetPoints(self.extractor.anchors)
         self.extractor.poly_data.SetLines(self.extractor.polies)
+    """
 
     def get_actors(self, colour):
         poly_data = self.extractor.startExtraction()
@@ -279,26 +279,25 @@ class VtkLineStringZMLayer(VtkLineLayer):
 
 class VtkMultiLineStringLayer(VtkLineLayer):
     make_vertexts = Mixin2D.make_vertexts
-    make_wkt = MixinMulti.make_wkt
+    make_wkt = MixinSingle.make_wkt
 
 
 class VtkMultiLineStringZLayer(VtkLineLayer):
     make_vertexts = Mixin3D.make_vertexts
-    make_wkt = MixinMulti.make_wkt
+    make_wkt = MixinSingle.make_wkt
 
 
 class VtkMultiLineStringMLayer(VtkLineLayer):
     make_vertexts = MixinM.make_vertexts
-    make_wkt = MixinMulti.make_wkt
+    make_wkt = MixinSingle.make_wkt
 
 
 class VtkMultiLineStringZMLayer(VtkLineLayer):
     make_vertexts = MixinZM.make_vertexts
-    make_wkt = MixinMulti.make_wkt
+    make_wkt = MixinSingle.make_wkt
 
 
 class VtkPointLayer(VtkLayer):
-    # TODO: Only adds first selected point, support other WkbTypes
     def make_wkt(self, vertices):
         if ('Z' or 'M') not in self.wkbTypeName[-2:]:
             vertexts = [f'({v[0]} {v[1]})' for v in vertices]
@@ -386,10 +385,10 @@ class VtkWidget(QVTKRenderWindowInteractor):
             print(layer_id)
             if layer_id not in self.layers.keys():
                 layer_type = VtkWidget.layer_type_map[type_name]
-                print(self.layers)
+                # print(self.layers)
                 created = layer_type(qgs_layer=qgis_layer)
                 created.update()
-                print('made a new one!')
+                # print('made a new one!')
                 self.layers[layer_id] = created
                 for actor in created.get_actors(self.colour_provider.next()):
                     self.renderer.AddActor(actor)
@@ -464,7 +463,6 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     # TODO: GetCurrentRenderer only works if RenderWindow was interacted with (e.g. zoomed, rotated)
     def OnRightButtonDown(self):
         clickPos = self.GetInteractor().GetEventPosition()
-        print("Click pos: ", clickPos)
         picker = vtk.vtkPointPicker()
         picker.SetTolerance(100)
         picker.Pick(clickPos[0], clickPos[1], 0, self.GetCurrentRenderer())
@@ -472,14 +470,11 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         picked_actor = picker.GetActor()
         print("vtkPointPicker picked: ", picked)
         if picked in self.vertices:
-            print("Vertex already in list!")
             return
         # return if selection is not an actor
         if picked_actor is None:
             return
-        print(len(self.vertices))
         self.vertices.append(picked)
-        print(len(self.vertices))
         self.draw()
 
     def draw(self):

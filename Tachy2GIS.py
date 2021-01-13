@@ -141,11 +141,7 @@ class Tachy2Gis:
 
         targetLayer = self.dlg.targetLayerComboBox.currentLayer()
         vtk_layer = self.vtk_widget.layers[targetLayer.id()]
-        try:
-            vtk_layer.add_feature(vertices)
-        except Exception as e:
-            print(vtk_layer.wkbTypeName)
-            raise e
+        vtk_layer.add_feature(vertices)
         # clear picked vertices and remove them from renderer
         self.vtk_mouse_interactor_style.vertices = []
         self.vtk_mouse_interactor_style.draw()
@@ -209,6 +205,10 @@ class Tachy2Gis:
                                                   QgsProject.instance().homePath(),
                                                   'Text (*.txt)',
                                                   '*.txt')[0]
+        if logFileName == '':
+            self.dlg.logFileEdit.clear()
+            self.tachyReader.hasLogFile = False
+            return
         self.dlg.logFileEdit.setText(logFileName)
         self.tachyReader.setLogfile(logFileName)
 
@@ -256,8 +256,8 @@ class Tachy2Gis:
         cells = vtk.vtkCellArray()
         colors = vtk.vtkUnsignedCharArray()
         colors.SetNumberOfComponents(3)
-        progress = QProgressDialog("Lade PointCloud...", "Abbrechen", 0, 0)
-        progress.setWindowTitle("PointCloud laden...")
+        progress = QProgressDialog(self.tr("Lade PointCloud..."), self.tr("Abbrechen"), 0, 0)
+        progress.setWindowTitle(self.tr("PointCloud laden..."))
         progress.setCancelButton(None)
         progress.show()
         with open(cloudFileName, 'r', encoding="utf-8-sig") as file:
@@ -353,6 +353,7 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setPickable)
 
         self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
+        self.dlg.targetLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.targetLayerComboBox.setExcludedProviders(["delimitedtext"])
         self.dlg.zoomResetButton.clicked.connect(self.resetVtkCamera)
 
@@ -367,7 +368,7 @@ class Tachy2Gis:
         self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.render_container_layout.addWidget(self.vtk_widget)
         self.dlg.vtk_frame.setLayout(self.render_container_layout)
-        # The interactorStyle is instanciated explicitely so it can be connected to
+        # The interactorStyle is instantiated explicitly so it can be connected to
         # events
         self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
         self.vtk_widget.SetInteractorStyle(self.vtk_mouse_interactor_style)
@@ -471,7 +472,7 @@ class Tachy2Gis:
                     else:
                         self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layer.layer().id()].vtkActor)
                         self.vtk_widget.layers.pop(layer.layer().id())
-        print("vtk_widget layers:\n", self.vtk_widget.layers)
+        # print("vtk_widget layers:\n", self.vtk_widget.layers)
         self.vtk_widget.refresh_content()
         self.setPickable()
 

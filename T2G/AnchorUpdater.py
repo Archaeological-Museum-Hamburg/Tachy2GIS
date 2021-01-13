@@ -181,7 +181,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             poly_data.SetPolys(polies)
 
             self.layer_cache[active_layer_id] = {'poly_data': poly_data, 'anchors': anchors}
-            print('loaded cache')
+            # print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']
             self.polies = self.poly_data.GetPolys()
@@ -210,7 +210,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             polyData.SetLines(cells)
 
             self.layer_cache[active_layer_id] = {'poly_data': polyData, 'anchors': linePoints}
-            print('loaded cache')
+            # print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']
 
@@ -233,7 +233,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             pointData.SetPoints(points)
             pointData.SetVerts(v_cells)
             self.layer_cache[active_layer_id] = {'poly_data': pointData, 'anchors': points}
-            print('loaded cache')
+            # print('loaded cache')
             self.poly_data = self.layer_cache[active_layer_id]['poly_data']
             self.anchors = self.layer_cache[active_layer_id]['anchors']
 

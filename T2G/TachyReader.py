@@ -134,7 +134,6 @@ class TachyReader(QThread):
 
     # TODO: crash when opening port without using the ping button
     #       Set ref height with geocom if gsi fails
-    #       Comma and error handling
     # Reflector height is getting set, but does not refresh in tachymeter when setting it with geocom
     def setReflectorHeight(self, refHeight):
         self.ser.close()
