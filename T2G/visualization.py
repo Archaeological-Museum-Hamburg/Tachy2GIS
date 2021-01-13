@@ -86,6 +86,8 @@ class VtkLayer:
 
 class MixinSingle:
     def make_wkt(self, vertices):
+        if "Poly" in self.wkbTypeName:
+            vertices.append(vertices[0])
         vertexts = self.make_vertexts(vertices)
         wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
@@ -93,6 +95,8 @@ class MixinSingle:
 
 class MixinMulti:
     def make_wkt(self, vertices):
+        if "Poly" in self.wkbTypeName:
+            vertices.append(vertices[0])
         vertexts = self.make_vertexts(vertices)
         wkt = f"{self.wkbTypeName}((({', '.join(vertexts)})))"
         return wkt
@@ -100,25 +104,33 @@ class MixinMulti:
 
 class Mixin2D:
     def make_vertexts(self, vertices):
+        if "Poly" in self.wkbTypeName:
+            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]}' for v in vertices]
 
 
 class Mixin3D:
     def make_vertexts(self, vertices):
+        if "Poly" in self.wkbTypeName:
+            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
 
 
 class MixinZM:
     def make_vertexts(self, vertices):
+        if "Poly" in self.wkbTypeName:
+            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
 
 
 class MixinM:
     def make_vertexts(self, vertices):
+        if "Poly" in self.wkbTypeName:
+            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]} {0.0}' for v in vertices]
 
 
-class VtkPolyLayer(VtkLayer, Mixin2D, MixinSingle):
+class VtkPolyLayer(MixinSingle, Mixin2D, VtkLayer):
     # TODO: len(vertices) < 3 unhandled
 
     def get_actors(self, colour):
@@ -302,7 +314,6 @@ class VtkPointLayer(VtkLayer):
             wkt = []
             for v in vertexts:
                 wkt.append('{0}{1}'.format(self.wkbTypeName, v))
-                print("wktwkt: ", wkt)
                 # wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
@@ -390,7 +401,7 @@ class VtkWidget(QVTKRenderWindowInteractor):
         vtk_layer = self.layers.pop(layer.id())
         actors = vtk_layer.vtkActor
         if type(actors) != tuple:
-            actors = (actors, )
+            tuple(actors)
         for actor in actors:
             self.renderer.RemoveActor(actor)
 

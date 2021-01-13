@@ -123,8 +123,7 @@ class Tachy2Gis:
         self.tachyReader.lineReceived.connect(self.vertex_received)
         # self.tachyReader.beginListening()
         self.pluginIsActive = False
-        self.dlg = None
-        self.eventFilter = LineEditClicked()
+        # self.dlg = None
 
     NO_PORT = 'Select tachymeter USB port'
 
@@ -175,13 +174,12 @@ class Tachy2Gis:
         self.dlg.setRefHeight.returnPressed.disconnect()
         # self.vertexList.layoutChanged.disconnect()
         self.dlg.zoomResetButton.clicked.disconnect()
-        self.dlg.setRefHeight.removeEventFilter(self.eventFilter)
         self.availability_watchdog.serial_available.disconnect()
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
         self.disconnectVisibilityChanged()
-        self.disconnectMapLayers()
-        #QgsProject.instance().legendLayersAdded.disconnect()
+        # self.disconnectMapLayers()
+        # QgsProject.instance().legendLayersAdded.disconnect()
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -193,13 +191,10 @@ class Tachy2Gis:
         if activeLayer is None:
             return
         self.iface.setActiveLayer(activeLayer)
-        
-    def targetChanged(self):
-        targetLayer = self.fieldDialog.targetLayerComboBox.currentLayer()
-        self.mapTool.setGeometryType(targetLayer)
 
-    def toggleEdit(self):
-        iface.actionToggleEditing().trigger()
+    # TODO: Remove?
+    # def toggleEdit(self):
+    #     iface.actionToggleEditing().trigger()
 
     def connectSerial(self):
         port = self.dlg.portComboBox.currentText()
@@ -605,26 +600,11 @@ class Tachy2Gis:
             self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
             self.vtk_widget.refresh_content()
         self.setupControls()
-        # self.availability_watchdog.start()
-        self.tachyReader.start()
-        # Store the active map tool and switch to the T2G_VertexPickerTool
+        self.availability_watchdog.start()
+        self.tachyReader.beginListening()
         self.setActiveLayer()
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
-        self.dlg.setRefHeight.installEventFilter(self.eventFilter)
         self.dlg.show()
         self.update_renderer()
         # Tries to connect to tachy and also starts the tachymeter if it's off
         # self.tachyReader.hook_up()
-
-
-class LineEditClicked(QObject):
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.MouseButtonPress:
-            self.mousePressEvent()
-            return True
-        else:
-            return super().eventFilter(obj, event)
-
-    # TODO: Stop pollingTimer in TachyReader and start again on returnPressed signal
-    def mousePressEvent(self):
-        print("Clicked!")

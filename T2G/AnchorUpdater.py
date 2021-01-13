@@ -120,37 +120,22 @@ def unpack_multi_polygons(geometries):
             if len(coordinates) > 1:
                 for i in range(1, len(coordinates)):
                     unpacked += coordinates[i]
-            # Convert points to QgsPoint
-            for i in range(len(unpacked)):
-                for j in range(len(unpacked[i])):
-                    # Try, because some points are already QgsPoint although unpacked doesn't have any
-                    # TODO: This has to go away
-                    try:
-                        unpacked[i][j] = QgsPoint(*unpacked[i][j])
-                    except:
-                        pass
         elif geo.asWkt().startswith('MultiLine'):
             coordinates = json.loads(geo.asJson()).get('coordinates', [[]])
             unpacked.append(coordinates[0])
             if len(coordinates) > 1:
                 for i in range(1, len(coordinates)):
                     unpacked.append(coordinates[i])
-            for i in range(len(unpacked)):
-                for j in range(len(unpacked[i])):
-                    # Try, because some points are already QgsPoint although unpacked doesn't have any
-                    try:
-                        unpacked[i][j] = QgsPoint(*unpacked[i][j])
-                    except:
-                        pass
         else:
             unpacked.append(list(geo.vertices()))
-            for i in range(len(unpacked)):
-                for j in range(len(unpacked[i])):
-                    # Try, because some points are already QgsPoint although unpacked doesn't have any
-                    try:
-                        unpacked[i][j] = QgsPoint(*unpacked[i][j])
-                    except:
-                        pass
+    # TODO: This has to go away
+    # Convert points to QgsPoint
+    for i in range(len(unpacked)):
+        for j in range(len(unpacked[i])):
+            try:
+                unpacked[i][j] = QgsPoint(*unpacked[i][j])
+            except:
+                pass
     return unpacked
 
 
@@ -208,6 +193,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             if active_layer_id not in self.layer_cache.keys():
                 pass
             linePoints = vtk.vtkPoints()
+            linePoints.SetDataTypeToDouble()
             cells = vtk.vtkCellArray()
             geometries = unpack_multi_polygons(geometries)
             index = 0
@@ -235,6 +221,7 @@ class VtkAnchorUpdater(AnchorUpdater):
             if active_layer_id not in self.layer_cache.keys():
                 pass
             points = vtk.vtkPoints()
+            points.SetDataTypeToDouble()
             v_cells = vtk.vtkCellArray()
             geometries = unpack_multi_polygons(geometries)
             for geometry in geometries:
