@@ -404,13 +404,13 @@ class Tachy2Gis:
                         continue
                     if node.layer().geometryType() == QgsWkbTypes.NullGeometry:
                         continue
-                    node.visibilityChanged.disconnect()
+                    node.visibilityChanged.disconnect(self.update_renderer)
             if isinstance(child, QgsLayerTreeLayer):
                 if child.layer().type() == QgsMapLayerType.RasterLayer:
                     continue
                 if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
                     continue
-                child.visibilityChanged.disconnect()
+                child.visibilityChanged.disconnect(self.update_renderer)
 
     # TODO: Qgis sub-group not handled (group in group)
     #       rename to connectNodes(self), replace with layerTreeRoot().findLayers() ?

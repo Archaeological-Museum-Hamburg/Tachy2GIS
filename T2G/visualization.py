@@ -73,7 +73,10 @@ class VtkLayer:
                                                           geometry,
                                                           {},
                                                           self.source_layer.createExpressionContext())]
+        nextFeatId = self.source_layer.featureCount()
         for feat in features:
+            feat.setId(nextFeatId)
+            nextFeatId += 1  # next id for multiple points
             self.source_layer.startEditing()
             if QgsAttributeDialog(self.source_layer, feat, False).exec_():
                 self.source_layer.dataProvider().addFeatures([feat])
