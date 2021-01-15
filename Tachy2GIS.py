@@ -116,14 +116,11 @@ class Tachy2Gis:
         # From here: Own additions
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
         self.availability_watchdog = AvailabilityWatchdog()
-        self.availability_watchdog.start()
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
         self.tachyReader.lineReceived.connect(self.vertex_received)
-        # self.tachyReader.beginListening()
         self.pluginIsActive = False
-        # self.dlg = None
 
     NO_PORT = 'Select tachymeter USB port'
 
@@ -176,6 +173,7 @@ class Tachy2Gis:
         self.disconnectVisibilityChanged()
         # self.disconnectMapLayers()
         # QgsProject.instance().legendLayersAdded.disconnect()
+        self.dlg = None  # TODO: t2g can be reopened, but rerenders everything
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -183,7 +181,7 @@ class Tachy2Gis:
     def setActiveLayer(self):
         if Qt is None:
             return
-        activeLayer = self.dlg.sourceLayerComboBox.currentLayer()
+        activeLayer = self.dlg.targetLayerComboBox.currentLayer()
         if activeLayer is None:
             return
         self.iface.setActiveLayer(activeLayer)
@@ -349,9 +347,9 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer | QgsMapLayerProxyModel.WritableLayer)
         self.dlg.sourceLayerComboBox.setExcludedProviders(["delimitedtext"])
         self.dlg.sourceLayerComboBox.setLayer(self.iface.activeLayer())
-        self.dlg.sourceLayerComboBox.layerChanged.connect(self.setActiveLayer)
         self.dlg.sourceLayerComboBox.layerChanged.connect(self.setPickable)
 
+        self.dlg.targetLayerComboBox.layerChanged.connect(self.setActiveLayer)
         self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
         self.dlg.targetLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.targetLayerComboBox.setExcludedProviders(["delimitedtext"])
@@ -454,7 +452,6 @@ class Tachy2Gis:
             #root.layer().geometryChanged.connect(self.test)  # TODO: signal not triggering but shows as connected
 
     def update_renderer(self):
-        #self.vtk_widget.switch_layer(self.dlg.sourceLayerComboBox.currentLayer())
         for layer in QgsProject.instance().layerTreeRoot().findLayers():
             if layer.layer().type() == QgsMapLayerType.RasterLayer:
                 continue
@@ -607,5 +604,4 @@ class Tachy2Gis:
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
         self.dlg.show()
         self.update_renderer()
-        # Tries to connect to tachy and also starts the tachymeter if it's off
-        # self.tachyReader.hook_up()
+        self.resetVtkCamera()

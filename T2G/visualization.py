@@ -76,12 +76,13 @@ class VtkLayer:
         nextFeatId = self.source_layer.featureCount()
         for feat in features:
             feat.setId(nextFeatId)
-            nextFeatId += 1  # next id for multiple points
             self.source_layer.startEditing()
             if QgsAttributeDialog(self.source_layer, feat, False).exec_():
                 self.source_layer.dataProvider().addFeatures([feat])
                 QgsMessageLog.logMessage('Feature added')
                 self.source_layer.commitChanges()
+                self.source_layer.featureAdded.emit(nextFeatId)
+                nextFeatId += 1  # next id for multiple points
             else:
                 QgsMessageLog.logMessage('layer rolled back')
                 self.source_layer.rollBack()
@@ -219,33 +220,6 @@ class VtkMultiPolygonZMLayer(MixinZM, MixinMulti, VtkPolyLayer):
 
 class VtkLineLayer(VtkLayer):
     # TODO: len(vertices) < 2 unhandled, isMulti not needed?
-    """
-    def make_wkt(self, vertices):
-        if ('Z' or 'M') not in self.wkbTypeName[-2:]:
-            vertexts = [f'{v[0]} {v[1]}' for v in vertices]
-        elif self.wkbTypeName[-2:] == 'ZM':
-            vertexts = [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
-        elif self.wkbTypeName[-1] == 'M':
-            vertexts = [f'{v[0]} {v[1]} {0.0}' for v in vertices]
-        else:
-            vertexts = [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
-        if self.isMulti:
-            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
-        else:
-            wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
-        return wkt
-
-    def insert_geometry(self, vertices):
-        point_index = self.extractor.anchors.GetNumberOfPoints() + 1
-        new_poly = vtk.vtkPolyline()
-        for vertex in vertices:
-            new_poly.GetPointIds().InsertNextId(point_index)
-            point_index += 1
-            self.extractor.anchors.InsertNextPoint(*vertex)
-        self.extractor.polies.InsertNextCell(new_poly)
-        self.extractor.poly_data.SetPoints(self.extractor.anchors)
-        self.extractor.poly_data.SetLines(self.extractor.polies)
-    """
 
     def get_actors(self, colour):
         poly_data = self.extractor.startExtraction()
@@ -319,17 +293,6 @@ class VtkPointLayer(VtkLayer):
                 # wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
-    def insert_geometry(self, vertices):
-        point_index = self.extractor.anchors.GetNumberOfPoints() + 1
-        new_poly = vtk.vtkPoints()
-        for vertex in vertices:
-            new_poly.GetPointIds().InsertNextId(point_index)
-            point_index += 1
-            self.extractor.anchors.InsertNextPoint(*vertex)
-        self.extractor.polies.InsertNextCell(new_poly)
-        self.extractor.poly_data.SetPoints(self.extractor.anchors)
-        self.extractor.poly_data.SetVerts(self.extractor.polies)
-
     def get_actors(self, colour):
         poly_data = self.extractor.startExtraction()
         pointMapper = vtk.vtkPolyDataMapper()
@@ -385,13 +348,10 @@ class VtkWidget(QVTKRenderWindowInteractor):
         layer_id = qgis_layer.id()
         type_name = QgsWkbTypes.displayString(qgis_layer.wkbType())
         if type_name in VtkWidget.layer_type_map.keys():
-            print(layer_id)
             if layer_id not in self.layers.keys():
                 layer_type = VtkWidget.layer_type_map[type_name]
-                # print(self.layers)
                 created = layer_type(qgs_layer=qgis_layer)
                 created.update()
-                # print('made a new one!')
                 self.layers[layer_id] = created
                 for actor in created.get_actors(self.colour_provider.next()):
                     self.renderer.AddActor(actor)
@@ -432,7 +392,7 @@ class VtkWidget(QVTKRenderWindowInteractor):
 
         # We'll zoom in a little by accessing the camera and invoking a "Zoom"
         # method on it.
-        ren.ResetCamera()
+        # ren.ResetCamera()
         # ren.GetActiveCamera().Zoom(1.5)
         renWin.Render()
 
