@@ -79,9 +79,9 @@ class VtkLayer:
             self.source_layer.startEditing()
             if QgsAttributeDialog(self.source_layer, feat, False).exec_():
                 self.source_layer.dataProvider().addFeatures([feat])
+                self.source_layer.featureAdded.emit(nextFeatId)
                 QgsMessageLog.logMessage('Feature added')
                 self.source_layer.commitChanges()
-                self.source_layer.featureAdded.emit(nextFeatId)
                 nextFeatId += 1  # next id for multiple points
             else:
                 QgsMessageLog.logMessage('layer rolled back')
@@ -108,29 +108,21 @@ class MixinMulti:
 
 class Mixin2D:
     def make_vertexts(self, vertices):
-        if "Poly" in self.wkbTypeName:
-            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]}' for v in vertices]
 
 
 class Mixin3D:
     def make_vertexts(self, vertices):
-        if "Poly" in self.wkbTypeName:
-            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]} {v[2]}' for v in vertices]
 
 
 class MixinZM:
     def make_vertexts(self, vertices):
-        if "Poly" in self.wkbTypeName:
-            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]} {v[2]} {0.0}' for v in vertices]
 
 
 class MixinM:
     def make_vertexts(self, vertices):
-        if "Poly" in self.wkbTypeName:
-            vertices.append(vertices[0])
         return [f'{v[0]} {v[1]} {0.0}' for v in vertices]
 
 
