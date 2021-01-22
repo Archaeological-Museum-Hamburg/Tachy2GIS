@@ -64,14 +64,23 @@ class TachyReader(QThread):
         self.getRefHeight = ''
         super().__init__()
 
+    # TODO: Hook up not working for every tachymeter with gsi_ping
     def hook_up(self):
         port_names = [port.portName() for port in QSerialPortInfo.availablePorts()]
         print(port_names)
         beep = GeoCOMRequest(gc.BMM_BeepAlarm)
-        for port_name in port_names:
-            gsi_ping = GeoCOMPing(port_name, beep, 2000)
-            gsi_ping.found_tachy.connect(self.setPort)
-            gsi_ping.exec()
+        # for port_name in port_names:
+        #    gsi_ping = GeoCOMPing(port_name, beep, 2000)
+        #    gsi_ping.found_tachy.connect(self.setPort)
+        #    gsi_ping.exec()
+
+        # Test - connect to Port which has Prolific in its manufacturer name
+        for port in QSerialPortInfo.availablePorts():
+            if "Prolific" in port.manufacturer():
+                self.setPort(port.portName())
+                print(f"Connected to '{port.manufacturer()}' at Port: '{port.portName()}'")
+                return
+        print(f"'Prolific' not found in Port list: {[port.manufacturer() for port in QSerialPortInfo.availablePorts()]}")
 
     def poll(self):
         if self.ser.canReadLine():

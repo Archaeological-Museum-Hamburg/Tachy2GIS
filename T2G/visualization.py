@@ -436,6 +436,8 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         for actor in self.actors:
             if actor is None:
                 continue
+            if self.GetCurrentRenderer() is None:
+                continue
             self.GetCurrentRenderer().RemoveActor(actor)
             actor.SetMapper(None)
         # put all self.vertices into vertex_actor
