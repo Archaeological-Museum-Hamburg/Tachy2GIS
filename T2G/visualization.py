@@ -282,7 +282,6 @@ class VtkPointLayer(VtkLayer):
             wkt = []
             for v in vertexts:
                 wkt.append('{0}{1}'.format(self.wkbTypeName, v))
-                # wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
         return wkt
 
     def get_actors(self, colour):
@@ -292,6 +291,7 @@ class VtkPointLayer(VtkLayer):
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
         pointActor.GetProperty().SetPointSize(5)
+        # TODO: Has to be disabled for Intel HD Graphics 4000 - points dont get rendered
         pointActor.GetProperty().RenderPointsAsSpheresOn()
         pointActor.GetProperty().SetColor(colour)
 

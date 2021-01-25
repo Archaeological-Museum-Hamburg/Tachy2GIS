@@ -119,8 +119,8 @@ class Tachy2Gis:
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
-        self.tachyReader.lineReceived.connect(self.vertex_received)
         self.pluginIsActive = False
+        self.setupControls()
 
     NO_PORT = 'Select tachymeter USB port'
 
@@ -156,6 +156,7 @@ class Tachy2Gis:
 
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
+        self.vtk_widget.renderer.GetRenderWindow().Finalize()
         self.dlg.closingPlugin.disconnect(self.onCloseCleanup)
         self.dlg.tachy_connect_button.clicked.disconnect()
         # self.dlg.request_mirror.clicked.disconnect()
@@ -173,7 +174,8 @@ class Tachy2Gis:
         self.disconnectVisibilityChanged()
         # self.disconnectMapLayers()
         # QgsProject.instance().legendLayersAdded.disconnect()
-        self.dlg = None  # TODO: t2g can be reopened, but rerenders everything
+        # TODO: t2g can be reopened, but rerenders everything
+        self.dlg = None
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -226,6 +228,15 @@ class Tachy2Gis:
 
     def resetVtkCamera(self):
         self.vtk_widget.renderer.ResetCamera()
+        self.vtk_widget.renderer.GetRenderWindow().Render()
+
+    # TODO: Top view works only on first run
+    def resetVtkCameraTop(self):
+        self.vtk_widget.renderer.ResetCamera(iface.mapCanvas().extent().xMinimum(),
+                                             iface.mapCanvas().extent().xMaximum(),
+                                             iface.mapCanvas().extent().yMinimum(),
+                                             iface.mapCanvas().extent().yMaximum(),
+                                             0, 0)
         self.vtk_widget.renderer.GetRenderWindow().Render()
 
     def setCoords(self, coord):
@@ -361,6 +372,7 @@ class Tachy2Gis:
                                             'Last 4 features',
                                             'Last 8 features',
                                             ])
+        self.tachyReader.lineReceived.connect(self.vertex_received)
         self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
 
         self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -597,11 +609,17 @@ class Tachy2Gis:
             self.render_container_layout = QVBoxLayout()
             self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
             self.vtk_widget.refresh_content()
-        self.setupControls()
+            self.setupControls()
+
+        # not implemented yet
+        self.dlg.zoomModeComboBox.hide()
+        self.dlg.setRefHeight.hide()
+
         self.availability_watchdog.start()
         self.tachyReader.beginListening()
         self.setActiveLayer()
         self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
-        self.dlg.show()
         self.update_renderer()
-        self.resetVtkCamera()
+        # Start with top view with QGIS map canvas extents
+        self.resetVtkCameraTop()
+        self.dlg.show()
