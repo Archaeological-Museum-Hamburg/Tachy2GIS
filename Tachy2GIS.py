@@ -77,6 +77,8 @@ def make_axes_actor(scale, xyzLabels):
 
 
 class Tachy2Gis:
+    NO_PORT = 'Select tachymeter USB port'
+
     """QGIS Plugin Implementation."""
     # Custom methods go here:
 
@@ -120,9 +122,7 @@ class Tachy2Gis:
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
         self.pluginIsActive = False
-        self.setupControls()
-
-    NO_PORT = 'Select tachymeter USB port'
+        # self.setupControls()
 
     def vertex_received(self, line):
         new_vtx = make_vertex(line)
@@ -156,26 +156,33 @@ class Tachy2Gis:
 
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
-        self.vtk_widget.renderer.GetRenderWindow().Finalize()
+        # Remove vertices if 'self.dlg = None' is not set
+        self.vtk_mouse_interactor_style.vertices = []
+        self.vtk_mouse_interactor_style.draw()
         self.dlg.closingPlugin.disconnect(self.onCloseCleanup)
+        # disconnect setupControls
         self.dlg.tachy_connect_button.clicked.disconnect()
-        # self.dlg.request_mirror.clicked.disconnect()
         self.dlg.logFileEdit.selectionChanged.disconnect()
-        # self.dlg.deleteAllButton.clicked.disconnect()
         self.dlg.dumpButton.clicked.disconnect()
         self.dlg.deleteVertexButton.clicked.disconnect()
-        self.dlg.sourceLayerComboBox.layerChanged.disconnect()
         self.dlg.setRefHeight.returnPressed.disconnect()
-        # self.vertexList.layoutChanged.disconnect()
         self.dlg.zoomResetButton.clicked.disconnect()
         self.availability_watchdog.serial_available.disconnect()
+        self.dlg.loadPointCloud.clicked.disconnect()
+        self.dlg.sourceLayerComboBox.layerChanged.disconnect()
+        self.dlg.targetLayerComboBox.layerChanged.disconnect()
+        self.tachyReader.lineReceived.disconnect()
+        # self.dlg.request_mirror.clicked.disconnect()
+        # self.dlg.deleteAllButton.clicked.disconnect()
+        # self.vertexList.layoutChanged.disconnect()
+
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
         self.disconnectVisibilityChanged()
         # self.disconnectMapLayers()
         # QgsProject.instance().legendLayersAdded.disconnect()
         # TODO: t2g can be reopened, but rerenders everything
-        self.dlg = None
+        # self.dlg = None
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -397,7 +404,7 @@ class Tachy2Gis:
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         # Connect signals for existing layers
         self.connectVisibilityChanged()
-        self.connectMapLayers()
+        # self.connectMapLayers()
         # Connect visibilityChanged signal for added and removed layers
         # QgsProject.instance().legendLayersAdded.connect(self.connectVisibilityChanged)
         # QgsProject.instance().layersRemoved.connect(self.disconnectVisibilityChanged)
@@ -414,13 +421,19 @@ class Tachy2Gis:
                         continue
                     if node.layer().geometryType() == QgsWkbTypes.NullGeometry:
                         continue
-                    node.visibilityChanged.disconnect(self.update_renderer)
+                    try:
+                        node.visibilityChanged.disconnect(self.update_renderer)
+                    except:
+                        pass
             if isinstance(child, QgsLayerTreeLayer):
                 if child.layer().type() == QgsMapLayerType.RasterLayer:
                     continue
                 if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
                     continue
-                child.visibilityChanged.disconnect(self.update_renderer)
+                try:
+                    child.visibilityChanged.disconnect(self.update_renderer)
+                except:
+                    pass
 
     # TODO: Qgis sub-group not handled (group in group)
     #       rename to connectNodes(self), replace with layerTreeRoot().findLayers() ?
@@ -611,6 +624,7 @@ class Tachy2Gis:
             self.vtk_widget.refresh_content()
             self.setupControls()
 
+        self.setupControls()
         # not implemented yet
         self.dlg.zoomModeComboBox.hide()
         self.dlg.setRefHeight.hide()
