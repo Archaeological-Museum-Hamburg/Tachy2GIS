@@ -1,7 +1,9 @@
 import vtk
-from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsMessageLog, QgsVectorDataProvider, QgsVectorLayerUtils
+from qgis.core import Qgis, QgsFeature, QgsGeometry, QgsWkbTypes, QgsMessageLog, QgsVectorDataProvider, QgsVectorLayerUtils
 from qgis.gui import QgsAttributeDialog
+from qgis.utils import iface
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from random import random
 from .AnchorUpdater import VtkAnchorUpdater
@@ -55,7 +57,13 @@ class VtkLayer:
         capabilities = self.source_layer.dataProvider().capabilities()
         if not capabilities & QgsVectorDataProvider.AddFeatures:
             QgsMessageLog.logMessage('data provider incapable')
-            return
+            return -1
+        if "Poly" in self.wkbTypeName and len(vertices) < 3:
+            iface.messageBar().pushMessage("Fehler: ", "Polygone müssen mindestens 3 Punkte haben!", Qgis.Warning, 5)
+            return -1
+        if "LineString" in self.wkbTypeName and len(vertices) <= 1:
+            iface.messageBar().pushMessage("Fehler: ", "Linien müssen mindestens 2 Punkte haben!", Qgis.Warning, 5)
+            return -1
         wktGeo = self.make_wkt(vertices)
         if isinstance(wktGeo, list):
             # This only happens for multiple single point geos ->
@@ -211,8 +219,6 @@ class VtkMultiPolygonZMLayer(MixinZM, MixinMulti, VtkPolyLayer):
 
 
 class VtkLineLayer(VtkLayer):
-    # TODO: len(vertices) < 2 unhandled, isMulti not needed?
-
     def get_actors(self, colour):
         poly_data = self.extractor.startExtraction()
         lineMapper = vtk.vtkPolyDataMapper()

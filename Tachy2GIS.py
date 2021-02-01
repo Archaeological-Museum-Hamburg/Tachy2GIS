@@ -118,11 +118,12 @@ class Tachy2Gis:
         # From here: Own additions
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
         self.availability_watchdog = AvailabilityWatchdog()
+        self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
+        self.markerWidget = vtk.vtkOrientationMarkerWidget()
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
         self.pluginIsActive = False
-        # self.setupControls()
 
     def vertex_received(self, line):
         new_vtx = make_vertex(line)
@@ -138,27 +139,31 @@ class Tachy2Gis:
 
         targetLayer = self.dlg.targetLayerComboBox.currentLayer()
         vtk_layer = self.vtk_widget.layers[targetLayer.id()]
-        vtk_layer.add_feature(vertices)
+        if vtk_layer.add_feature(vertices) == -1:
+            return
         # clear picked vertices and remove them from renderer
         self.vtk_mouse_interactor_style.vertices = []
         self.vtk_mouse_interactor_style.draw()
         # remove vtk layer and update renderer
-        self.rerenderVtkLayer(targetLayer)
+        self.rerenderVtkLayer([targetLayer.id()])
 
-    def rerenderVtkLayer(self, layer):
-        if type(self.vtk_widget.layers[layer.id()].vtkActor) == tuple:
-            for actor in self.vtk_widget.layers[layer.id()].vtkActor:
-                self.vtk_widget.renderer.RemoveActor(actor)
-        else:
-            self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layer.id()].vtkActor)
-        self.vtk_widget.layers.pop(layer.id())
+    # Used after dump and layerRemoved/added signal which return the layer ids as list
+    def rerenderVtkLayer(self, layerIds):
+        for layerId in layerIds:
+            if layerId in self.vtk_widget.layers:
+                if type(self.vtk_widget.layers[layerId].vtkActor) == tuple:
+                    for actor in self.vtk_widget.layers[layerId].vtkActor:
+                        self.vtk_widget.renderer.RemoveActor(actor)
+                else:
+                    self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[layerId].vtkActor)
+                self.vtk_widget.layers.pop(layerId)
         self.update_renderer()
 
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
-        # Remove vertices if 'self.dlg = None' is not set
-        self.vtk_mouse_interactor_style.vertices = []
-        self.vtk_mouse_interactor_style.draw()
+        # self.vtk_mouse_interactor_style.vertices = []
+        # self.vtk_mouse_interactor_style.draw()
+        self.vtk_widget.renderer.GetRenderWindow().Finalize()  # Renderer does not crash anymore after plugin reload
         self.dlg.closingPlugin.disconnect(self.onCloseCleanup)
         # disconnect setupControls
         self.dlg.tachy_connect_button.clicked.disconnect()
@@ -172,6 +177,8 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.disconnect()
         self.dlg.targetLayerComboBox.layerChanged.disconnect()
         self.tachyReader.lineReceived.disconnect()
+        QgsProject.instance().legendLayersAdded.disconnect(self.rerenderVtkLayer)
+        QgsProject.instance().layersRemoved.disconnect(self.rerenderVtkLayer)
         # self.dlg.request_mirror.clicked.disconnect()
         # self.dlg.deleteAllButton.clicked.disconnect()
         # self.vertexList.layoutChanged.disconnect()
@@ -387,11 +394,9 @@ class Tachy2Gis:
         self.dlg.vtk_frame.setLayout(self.render_container_layout)
         # The interactorStyle is instantiated explicitly so it can be connected to
         # events
-        self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
         self.vtk_widget.SetInteractorStyle(self.vtk_mouse_interactor_style)
         self.dlg.deleteVertexButton.clicked.connect(self.vtk_mouse_interactor_style.remove_selected)
         # Setup axes
-        self.markerWidget = vtk.vtkOrientationMarkerWidget()
         self.markerWidget.SetOrientationMarker(self.vtk_widget.axes)
         self.markerWidget.SetInteractor(self.vtk_widget.renderer.GetRenderWindow().GetInteractor())
         self.markerWidget.SetViewport(0.0, 0.0, 0.1, 0.3)
@@ -405,12 +410,11 @@ class Tachy2Gis:
         # Connect signals for existing layers
         self.connectVisibilityChanged()
         # self.connectMapLayers()
-        # Connect visibilityChanged signal for added and removed layers
+        # TODO: Connect visibilityChanged signal for added and removed layers
         # QgsProject.instance().legendLayersAdded.connect(self.connectVisibilityChanged)
         # QgsProject.instance().layersRemoved.connect(self.disconnectVisibilityChanged)
-        # QgsProject.instance().legendLayersRemoved.connect(self.rerenderVtkLayer)
-        # QgsProject.instance().layersRemoved.connect(self.update_renderer)
-        # QgsProject.instance().layersRemoved.connect(removeVtkLayer)
+        QgsProject.instance().legendLayersAdded.connect(self.rerenderVtkLayer)
+        QgsProject.instance().layersRemoved.connect(self.rerenderVtkLayer)
 
     # TODO: rename to disconnectNodes(self)
     def disconnectVisibilityChanged(self):
@@ -616,24 +620,24 @@ class Tachy2Gis:
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
-        # # Create the dialog (after translation) and keep reference
-        if self.dlg is None:
-            self.dlg = Tachy2GisDialog()
-            self.render_container_layout = QVBoxLayout()
-            self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
-            self.vtk_widget.refresh_content()
+            # # Create the dialog (after translation) and keep reference
+            if self.dlg is None:
+                self.dlg = Tachy2GisDialog()
+                self.render_container_layout = QVBoxLayout()
+                self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
+                self.vtk_widget.refresh_content()
+                self.setupControls()
+
             self.setupControls()
+            # not implemented yet
+            self.dlg.zoomModeComboBox.hide()
+            self.dlg.setRefHeight.hide()
 
-        self.setupControls()
-        # not implemented yet
-        self.dlg.zoomModeComboBox.hide()
-        self.dlg.setRefHeight.hide()
-
-        self.availability_watchdog.start()
-        self.tachyReader.beginListening()
-        self.setActiveLayer()
-        self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
-        self.update_renderer()
-        # Start with top view with QGIS map canvas extents
-        self.resetVtkCameraTop()
-        self.dlg.show()
+            self.availability_watchdog.start()
+            self.tachyReader.beginListening()
+            self.setActiveLayer()
+            self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
+            self.update_renderer()
+            # Start with top view with QGIS map canvas extents
+            self.resetVtkCameraTop()
+            self.dlg.show()
