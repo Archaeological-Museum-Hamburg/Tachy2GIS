@@ -81,6 +81,17 @@ class TachyReader(QThread):
                 print(f"Connected to '{port.manufacturer()}' at Port: '{port.portName()}'")
                 return
         print(f"'Prolific' not found in Port list: {[port.manufacturer() for port in QSerialPortInfo.availablePorts()]}")
+        print("Trying Bluetooth...")
+        # Try to connect to bluetooth
+        for port in QSerialPortInfo.availablePorts():
+            if "Microsoft" in port.manufacturer():
+                self.setPort(port.portName())
+                if port.isBusy():
+                    print(f"Connected over Bluetooth to '{port.portName()}'")
+                    return
+                else:
+                    continue
+        print("Could not connect to Bluetooth")
 
     def poll(self):
         if self.ser.canReadLine():
