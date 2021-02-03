@@ -9,6 +9,7 @@ import datetime
 from .GSI_Parser import GSIPing
 from . import gc_constants as gc
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, QThread
+from PyQt5.QtWidgets import QInputDialog, QWidget
 from qgis.core import QgsMessageLog
 from .geo_com import GeoCOMRequest, GeoCOMMessageQueue, GeoCOMReply, GeoCOMPing
 from . import gc_constants
@@ -65,6 +66,7 @@ class TachyReader(QThread):
         super().__init__()
 
     # TODO: Hook up not working for every tachymeter with gsi_ping
+    #       Hook up to right port automatically
     def hook_up(self):
         port_names = [port.portName() for port in QSerialPortInfo.availablePorts()]
         print(port_names)
@@ -81,17 +83,20 @@ class TachyReader(QThread):
                 print(f"Connected to '{port.manufacturer()}' at Port: '{port.portName()}'")
                 return
         print(f"'Prolific' not found in Port list: {[port.manufacturer() for port in QSerialPortInfo.availablePorts()]}")
-        print("Trying Bluetooth...")
-        # Try to connect to bluetooth
-        for port in QSerialPortInfo.availablePorts():
-            if "Microsoft" in port.manufacturer():
-                self.setPort(port.portName())
-                if port.isBusy():
-                    print(f"Connected over Bluetooth to '{port.portName()}'")
-                    return
-                else:
-                    continue
-        print("Could not connect to Bluetooth")
+        # Show port list and let user choose the port
+        btPort, okPressed = QInputDialog.getItem(QWidget(),
+                                                 "Verbinden...",
+                                                 "Bluetooth oder COM Port auswählen:",
+                                                 [p.portName() for p in QSerialPortInfo.availablePorts()],
+                                                 0,
+                                                 False)
+        if not okPressed:
+            return
+        if self.setPort(btPort):
+            print(f"Connected to '{btPort}'")
+            return
+        else:
+            print(f"Could not connect to Port '{btPort}'")
 
     def poll(self):
         if self.ser.canReadLine():
@@ -145,6 +150,7 @@ class TachyReader(QThread):
         self.got_it.emit('404')
         self.beginListening()
         # self.request_mirror_z()
+        return self.ser.isWritable()
 
     @pyqtSlot()
     def shutDown(self):
