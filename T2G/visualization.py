@@ -518,15 +518,8 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     # Remove vertex from self.vertices and self.vtk_points
     def remove_selected(self):
         if self.vertices:
-            # No idea how this happens, but it looks like the vertex list gets reversed in some other
-            # step. Without reversing it before removing a vertex, the index '-1' deletes the first element.
-            # '.pop' behaves the same way.
             # working with the select_index allows to work with a wdget that allows selection of vertices.
-
-            # self.vertices.reverse()
             del self.vertices[self.select_index]
-            # self.vertices.reverse()
-            # self.select_index = -1
             self.draw()
 
     def removeAllVertices(self):

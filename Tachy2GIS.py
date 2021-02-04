@@ -244,8 +244,11 @@ class Tachy2Gis:
         self.vtk_widget.renderer.ResetCamera()
         self.vtk_widget.renderer.GetRenderWindow().Render()
 
-    # TODO: Top view works only on first run
+    # TODO: Other views?
     def resetVtkCameraTop(self):
+        self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+        self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+        self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
         self.vtk_widget.renderer.ResetCamera(iface.mapCanvas().extent().xMinimum(),
                                              iface.mapCanvas().extent().xMaximum(),
                                              iface.mapCanvas().extent().yMinimum(),
@@ -378,7 +381,7 @@ class Tachy2Gis:
         self.dlg.targetLayerComboBox.setFilters(QgsMapLayerProxyModel.VectorLayer)
         self.dlg.targetLayerComboBox.setLayer(self.iface.activeLayer())
         self.dlg.targetLayerComboBox.setExcludedProviders(["delimitedtext"])
-        self.dlg.zoomResetButton.clicked.connect(self.resetVtkCamera)
+        self.dlg.zoomResetButton.clicked.connect(self.resetVtkCameraTop)
 
         self.dlg.zoomModeComboBox.addItems(['Layer',
                                             'Last feature',
