@@ -148,7 +148,20 @@ class Tachy2Gis:
         self.rerenderVtkLayer([targetLayer.id()])
 
     # Used after dump and layerRemoved/added signal which return the layer ids as list
+    # featuresDeleted returns feature ids (int) instead of layer id so activeLayer().id() is used
     def rerenderVtkLayer(self, layerIds):
+        # featuresDeleted
+        if isinstance(layerIds[0], int):
+            print("test - iterations")
+            if type(self.vtk_widget.layers[iface.activeLayer().id()].vtkActor) == tuple:
+                for actor in self.vtk_widget.layers[iface.activeLayer().id()].vtkActor:
+                    self.vtk_widget.renderer.RemoveActor(actor)
+            else:
+                self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[iface.activeLayer().id()].vtkActor)
+            self.vtk_widget.layers.pop(iface.activeLayer().id())
+            self.update_renderer()
+            return
+        # legendLayersAdded/ layerRemoved
         for layerId in layerIds:
             if layerId in self.vtk_widget.layers:
                 if type(self.vtk_widget.layers[layerId].vtkActor) == tuple:
@@ -161,8 +174,6 @@ class Tachy2Gis:
 
     # Disconnect Signals and stop QThreads
     def onCloseCleanup(self):
-        # self.vtk_mouse_interactor_style.vertices = []
-        # self.vtk_mouse_interactor_style.draw()
         self.vtk_widget.renderer.GetRenderWindow().Finalize()  # Renderer does not crash anymore after plugin reload
         self.dlg.closingPlugin.disconnect(self.onCloseCleanup)
         # disconnect setupControls
@@ -179,17 +190,13 @@ class Tachy2Gis:
         self.tachyReader.lineReceived.disconnect()
         QgsProject.instance().legendLayersAdded.disconnect(self.rerenderVtkLayer)
         QgsProject.instance().layersRemoved.disconnect(self.rerenderVtkLayer)
+        self.disconnectMapLayers()
         # self.dlg.request_mirror.clicked.disconnect()
         # self.dlg.deleteAllButton.clicked.disconnect()
         # self.vertexList.layoutChanged.disconnect()
 
         self.availability_watchdog.shutDown()
         self.tachyReader.shutDown()
-        self.disconnectVisibilityChanged()
-        # self.disconnectMapLayers()
-        # QgsProject.instance().legendLayersAdded.disconnect()
-        # TODO: t2g can be reopened, but rerenders everything
-        # self.dlg = None
         self.pluginIsActive = False
         gc.collect()
         print('Signals disconnected!')
@@ -254,6 +261,7 @@ class Tachy2Gis:
                                              iface.mapCanvas().extent().yMinimum(),
                                              iface.mapCanvas().extent().yMaximum(),
                                              0, 0)
+        self.vtk_widget.renderer.GetActiveCamera().Zoom(3)
         self.vtk_widget.renderer.GetRenderWindow().Render()
 
     def setCoords(self, coord):
@@ -411,77 +419,36 @@ class Tachy2Gis:
 
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         # Connect signals for existing layers
-        self.connectVisibilityChanged()
-        # self.connectMapLayers()
-        # TODO: Connect visibilityChanged signal for added and removed layers
-        # QgsProject.instance().legendLayersAdded.connect(self.connectVisibilityChanged)
-        # QgsProject.instance().layersRemoved.connect(self.disconnectVisibilityChanged)
+        self.connectMapLayers()
+        QgsProject.instance().layerTreeRoot().visibilityChanged.connect(self.update_renderer)
         QgsProject.instance().legendLayersAdded.connect(self.rerenderVtkLayer)
+        QgsProject.instance().legendLayersAdded.connect(self.connectAddedMapLayers)
         QgsProject.instance().layersRemoved.connect(self.rerenderVtkLayer)
 
-    # TODO: rename to disconnectNodes(self)
-    def disconnectVisibilityChanged(self):
-        for child in QgsProject.instance().layerTreeRoot().children():
-            if isinstance(child, QgsLayerTreeGroup):
-                for node in child.children():
-                    if node.layer().type() == QgsMapLayerType.RasterLayer:
-                        continue
-                    if node.layer().geometryType() == QgsWkbTypes.NullGeometry:
-                        continue
-                    try:
-                        node.visibilityChanged.disconnect(self.update_renderer)
-                    except:
-                        pass
-            if isinstance(child, QgsLayerTreeLayer):
-                if child.layer().type() == QgsMapLayerType.RasterLayer:
-                    continue
-                if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
-                    continue
-                try:
-                    child.visibilityChanged.disconnect(self.update_renderer)
-                except:
-                    pass
-
-    # TODO: Qgis sub-group not handled (group in group)
-    #       rename to connectNodes(self), replace with layerTreeRoot().findLayers() ?
-    def connectVisibilityChanged(self):
-        for child in QgsProject.instance().layerTreeRoot().children():
-            if isinstance(child, QgsLayerTreeGroup):
-                for node in child.children():
-                    if node.layer().type() == QgsMapLayerType.RasterLayer:
-                        continue
-                    if node.layer().geometryType() == QgsWkbTypes.NullGeometry:
-                        continue
-                    if node.receivers(node.visibilityChanged) > 1:  # prevent connecting multiple times
-                        continue
-                    node.visibilityChanged.connect(self.update_renderer)
-            if isinstance(child, QgsLayerTreeLayer):
-                if child.layer().type() == QgsMapLayerType.RasterLayer:
-                    continue
-                if child.layer().geometryType() == QgsWkbTypes.NullGeometry:
-                    continue
-                if child.receivers(child.visibilityChanged) > 1:
-                    continue
-                child.visibilityChanged.connect(self.update_renderer)
-
     def disconnectMapLayers(self):
-        for root in QgsProject.instance().layerTreeRoot().findLayers():
-            if root.layer().type() == QgsMapLayerType.RasterLayer:
+        for layer in QgsProject.instance().layerTreeRoot().findLayers():
+            if layer.layer().type() == QgsMapLayerType.RasterLayer:
                 continue
-            if root.layer().geometryType() == QgsWkbTypes.NullGeometry:
+            if layer.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
-            pass
-            #root.layer().geometryChanged.disconnect()
+            layer.layer().featuresDeleted.disconnect(self.rerenderVtkLayer)
 
     # connect existing QgsMapLayers
     def connectMapLayers(self):
-        for root in QgsProject.instance().layerTreeRoot().findLayers():
-            if root.layer().type() == QgsMapLayerType.RasterLayer:
+        for layer in QgsProject.instance().layerTreeRoot().findLayers():
+            if layer.layer().type() == QgsMapLayerType.RasterLayer:
                 continue
-            if root.layer().geometryType() == QgsWkbTypes.NullGeometry:
+            if layer.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
-            pass
-            #root.layer().geometryChanged.connect(self.test)  # TODO: signal not triggering but shows as connected
+            layer.layer().featuresDeleted.connect(self.rerenderVtkLayer)
+
+    def connectAddedMapLayers(self, QgsMapLayers):
+        for layer in QgsMapLayers:
+            if layer.type() == QgsMapLayerType.RasterLayer:
+                continue
+            if layer.geometryType() == QgsWkbTypes.NullGeometry:
+                continue
+            layer.featuresDeleted.connect(self.rerenderVtkLayer)
 
     def update_renderer(self):
         for layer in QgsProject.instance().layerTreeRoot().findLayers():
@@ -617,6 +584,7 @@ class Tachy2Gis:
         # remove the toolbar
         # del self.toolbarminec
 
+    # todo: QGIS Crashing when closing t3g undocked and reopening
     def run(self):
         """Run method that performs all the real work"""
 
