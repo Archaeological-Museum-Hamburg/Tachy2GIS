@@ -117,6 +117,12 @@ class Tachy2Gis:
         # self.toolbar.setObjectName('Tachy2Gis')
 
         # From here: Own additions
+        self.dlg.zoomModeComboBox.addItems(['Layer',
+                                            'Last feature',
+                                            'Last 2 features',
+                                            'Last 4 features',
+                                            'Last 8 features',
+                                            ])
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
         self.availability_watchdog = AvailabilityWatchdog()
         self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
@@ -151,6 +157,10 @@ class Tachy2Gis:
     # Used after dump and layerRemoved/added signal which return the layer ids as list
     # featuresDeleted returns feature ids (int) instead of layer id so activeLayer().id() is used
     def rerenderVtkLayer(self, layerIds=[0]):
+        # todo: featureAdded triggering for every feature added, calling update_renderer multiple times on save
+        # featureAdded
+        if isinstance(layerIds, int):
+            layerIds = [layerIds]
         # featuresDeleted
         if isinstance(layerIds[0], int):
             if type(self.vtk_widget.layers[iface.activeLayer().id()].vtkActor) == tuple:
@@ -188,6 +198,7 @@ class Tachy2Gis:
         self.dlg.sourceLayerComboBox.layerChanged.disconnect()
         self.dlg.targetLayerComboBox.layerChanged.disconnect()
         self.tachyReader.lineReceived.disconnect()
+        self.dlg.zoomModeComboBox.activated.disconnect(self.autozoom)
         QgsProject.instance().legendLayersAdded.disconnect(self.rerenderVtkLayer)
         QgsProject.instance().layersRemoved.disconnect(self.rerenderVtkLayer)
         self.disconnectMapLayers()
@@ -243,6 +254,129 @@ class Tachy2Gis:
         canvas = iface.mapCanvas()
         canvas.zoomToFullExtent()
         canvas.refresh()
+
+    def autozoom(self, index):
+        if self.dlg.sourceLayerComboBox.currentLayer() is None:
+            return
+        if index == 0:  # Layer
+            self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
+            self.vtk_widget.renderer.ResetCamera(self.dlg.sourceLayerComboBox.currentLayer().extent().xMinimum(),
+                                                 self.dlg.sourceLayerComboBox.currentLayer().extent().xMaximum(),
+                                                 self.dlg.sourceLayerComboBox.currentLayer().extent().yMinimum(),
+                                                 self.dlg.sourceLayerComboBox.currentLayer().extent().yMaximum(),
+                                                 0, 0)
+            self.vtk_widget.renderer.GetRenderWindow().Render()
+        elif index == 1:  # Last Feature
+            feats = [f for f in self.dlg.sourceLayerComboBox.currentLayer().getFeatures()]
+            if not feats:
+                self.dlg.zoomModeComboBox.setCurrentIndex(0)
+                return
+            featIds = [f.id() for f in feats]
+            if min(featIds) < 0:  # layers in edit buffer have ids below 0
+                index = featIds.index(min(featIds))
+            else:
+                index = -1
+            self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
+            self.vtk_widget.renderer.ResetCamera(feats[index].geometry().boundingBox().xMinimum(),
+                                                 feats[index].geometry().boundingBox().xMaximum(),
+                                                 feats[index].geometry().boundingBox().yMinimum(),
+                                                 feats[index].geometry().boundingBox().yMaximum(),
+                                                 0, 0)
+            self.vtk_widget.renderer.GetRenderWindow().Render()
+        elif index == 2:  # Last 2 Features
+            feats = [f for f in self.dlg.sourceLayerComboBox.currentLayer().getFeatures()]
+            if not feats or len(feats) < 2:
+                self.dlg.zoomModeComboBox.setCurrentIndex(0)
+                self.autozoom(0)
+                return
+            featIds = [f.id() for f in feats]
+            featIndices = []
+            for i in range(2):
+                if min(featIds) < 0:
+                    featIndices.append(featIds.index(min(featIds)))
+                    featIds[featIds.index(min(featIds))] = 0
+                else:
+                    featIndices.append(featIds.index(featIds[-1]))
+                    featIds.pop(-1)
+            xMin, xMax, yMin, yMax = [], [], [], []
+            for idx in featIndices:
+                xMin.append(feats[idx].geometry().boundingBox().xMinimum())
+                yMin.append(feats[idx].geometry().boundingBox().yMinimum())
+                xMax.append(feats[idx].geometry().boundingBox().xMaximum())
+                yMax.append(feats[idx].geometry().boundingBox().yMaximum())
+            self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
+            self.vtk_widget.renderer.ResetCamera(min(xMin),
+                                                 max(xMax),
+                                                 min(yMin),
+                                                 max(yMax),
+                                                 0, 0)
+            self.vtk_widget.renderer.GetRenderWindow().Render()
+        elif index == 3:  # Last 4 Features
+            feats = [f for f in self.dlg.sourceLayerComboBox.currentLayer().getFeatures()]
+            if not feats or len(feats) < 4:
+                self.dlg.zoomModeComboBox.setCurrentIndex(0)
+                self.autozoom(0)
+                return
+            featIds = [f.id() for f in feats]
+            featIndices = []
+            for i in range(4):
+                if min(featIds) < 0:
+                    featIndices.append(featIds.index(min(featIds)))
+                    featIds[featIds.index(min(featIds))] = 0
+                else:
+                    featIndices.append(featIds.index(featIds[-1]))
+                    featIds.pop(-1)
+            xMin, xMax, yMin, yMax = [], [], [], []
+            for idx in featIndices:
+                xMin.append(feats[idx].geometry().boundingBox().xMinimum())
+                yMin.append(feats[idx].geometry().boundingBox().yMinimum())
+                xMax.append(feats[idx].geometry().boundingBox().xMaximum())
+                yMax.append(feats[idx].geometry().boundingBox().yMaximum())
+            self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
+            self.vtk_widget.renderer.ResetCamera(min(xMin),
+                                                 max(xMax),
+                                                 min(yMin),
+                                                 max(yMax),
+                                                 0, 0)
+            self.vtk_widget.renderer.GetRenderWindow().Render()
+        elif index == 4:  # Last 8 Features
+            feats = [f for f in self.dlg.sourceLayerComboBox.currentLayer().getFeatures()]
+            if not feats or len(feats) < 8:
+                self.dlg.zoomModeComboBox.setCurrentIndex(0)
+                self.autozoom(0)
+                return
+            featIds = [f.id() for f in feats]
+            featIndices = []
+            for i in range(8):
+                if min(featIds) < 0:
+                    featIndices.append(featIds.index(min(featIds)))
+                    featIds[featIds.index(min(featIds))] = 0
+                else:
+                    featIndices.append(featIds.index(featIds[-1]))
+                    featIds.pop(-1)
+            xMin, xMax, yMin, yMax = [], [], [], []
+            for idx in featIndices:
+                xMin.append(feats[idx].geometry().boundingBox().xMinimum())
+                yMin.append(feats[idx].geometry().boundingBox().yMinimum())
+                xMax.append(feats[idx].geometry().boundingBox().xMaximum())
+                yMax.append(feats[idx].geometry().boundingBox().yMaximum())
+            self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
+            self.vtk_widget.renderer.ResetCamera(min(xMin),
+                                                 max(xMax),
+                                                 min(yMin),
+                                                 max(yMax),
+                                                 0, 0)
+            self.vtk_widget.renderer.GetRenderWindow().Render()
 
     def set_tachy_button_text(self, txt):
         self.dlg.tachy_connect_button.text = txt
@@ -402,12 +536,9 @@ class Tachy2Gis:
         self.dlg.targetLayerComboBox.setExcludedProviders(["delimitedtext"])
         self.dlg.zoomResetButton.clicked.connect(self.resetVtkCameraTop)
 
-        self.dlg.zoomModeComboBox.addItems(['Layer',
-                                            'Last feature',
-                                            'Last 2 features',
-                                            'Last 4 features',
-                                            'Last 8 features',
-                                            ])
+        self.dlg.zoomModeComboBox.activated.connect(self.autozoom)
+        self.dlg.zoomModeComboBox.setCurrentIndex(0)
+
         self.tachyReader.lineReceived.connect(self.vertex_received)
         self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
 
@@ -443,6 +574,7 @@ class Tachy2Gis:
             if layer.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             layer.layer().featuresDeleted.disconnect(self.rerenderVtkLayer)
+            layer.layer().featureAdded.disconnect(self.rerenderVtkLayer)
             layer.layer().afterRollBack.disconnect(self.rerenderVtkLayer)
 
     # connect existing QgsMapLayers
@@ -453,6 +585,7 @@ class Tachy2Gis:
             if layer.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             layer.layer().featuresDeleted.connect(self.rerenderVtkLayer)
+            layer.layer().featureAdded.connect(self.rerenderVtkLayer)
             layer.layer().afterRollBack.connect(self.rerenderVtkLayer)
 
     def connectAddedMapLayers(self, QgsMapLayers):
@@ -462,6 +595,7 @@ class Tachy2Gis:
             if layer.geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             layer.featuresDeleted.connect(self.rerenderVtkLayer)
+            layer.featureAdded.connect(self.rerenderVtkLayer)
             layer.afterRollBack.connect(self.rerenderVtkLayer)
 
     def update_renderer(self):
@@ -491,6 +625,7 @@ class Tachy2Gis:
         self.setPickable()
 
     # remove layers if they are not in the layer legend
+    # todo: qgsLayerIds None type has no .id() when loading project while t2g is open
     def vtkLayerCleanUp(self):
         qgsLayerIds = [layer.layer().id() for layer in QgsProject.instance().layerTreeRoot().findLayers()]
         vtkDict = self.vtk_widget.layers.copy()
@@ -633,7 +768,6 @@ class Tachy2Gis:
 
             self.setupControls()
             # not implemented yet
-            self.dlg.zoomModeComboBox.hide()
             self.dlg.setRefHeight.hide()
 
             self.availability_watchdog.start()
