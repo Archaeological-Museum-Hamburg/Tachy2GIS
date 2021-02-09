@@ -42,7 +42,8 @@ from PyQt5.QtCore import QSettings, QItemSelectionModel, QTranslator, QCoreAppli
 from PyQt5.QtGui import QIcon
 from qgis.utils import iface
 from qgis.core import Qgis, QgsMapLayerProxyModel, QgsProject, QgsMapLayerType, QgsWkbTypes, QgsLayerTreeGroup,\
-    QgsLayerTreeLayer, QgsGeometry, QgsVectorDataProvider, QgsFeature, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils
+    QgsLayerTreeLayer, QgsGeometry, QgsVectorDataProvider, QgsFeature, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils , \
+    QgsVectorLayer
 from qgis.gui import QgsMapToolPan
 
 import vtk
@@ -54,7 +55,7 @@ from .Tachy2GIS_dialog import Tachy2GisDialog
 from .T2G.autoZoomer import ExtentProvider, AutoZoomer
 from .T2G.geo_com import connect_beep
 from .T2G.GSI_Parser import make_vertex
-from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle, VtkLineLayer
+from .T2G.visualization import VtkWidget, VtkMouseInteractorStyle, VtkLineLayer, VtkLayer
 
 def make_axes_actor(scale, xyzLabels):
     axes = vtk.vtkAxesActor()
@@ -149,10 +150,9 @@ class Tachy2Gis:
 
     # Used after dump and layerRemoved/added signal which return the layer ids as list
     # featuresDeleted returns feature ids (int) instead of layer id so activeLayer().id() is used
-    def rerenderVtkLayer(self, layerIds):
+    def rerenderVtkLayer(self, layerIds=[0]):
         # featuresDeleted
         if isinstance(layerIds[0], int):
-            print("test - iterations")
             if type(self.vtk_widget.layers[iface.activeLayer().id()].vtkActor) == tuple:
                 for actor in self.vtk_widget.layers[iface.activeLayer().id()].vtkActor:
                     self.vtk_widget.renderer.RemoveActor(actor)
@@ -274,16 +274,16 @@ class Tachy2Gis:
     def getRefHeight(self):
         self.dlg.setRefHeight.setText(self.tachyReader.getRefHeight)
 
-    # TODO: remove layers from sourceLayerComboBox
     # Testline XYZRGB: 32565837.246360727 5933518.657366993 2.063523623769514 255 255 255
-    def loadPointCloud(self):
-        cloudFileName = QFileDialog.getOpenFileName(None,
-                                                    'PointCloud laden...',
-                                                    QgsProject.instance().homePath(),
-                                                    'XYZRGB (*.xyz);;Text (*.txt)',
-                                                    '*.xyz;;*.txt')[0]
-        if cloudFileName == '':
-            return
+    def loadPointCloud(self, cloudFileName=None, cloudId=None):
+        if not cloudFileName:
+            cloudFileName = QFileDialog.getOpenFileName(None,
+                                                        'PointCloud laden...',
+                                                        QgsProject.instance().homePath(),
+                                                        'XYZRGB (*.xyz);;Text (*.txt)',
+                                                        '*.xyz;;*.txt')[0]
+            if cloudFileName == '':
+                return
         cellIndex = 0
         points = vtk.vtkPoints()
         points.SetDataTypeToDouble()
@@ -312,10 +312,21 @@ class Tachy2Gis:
         pointActor = vtk.vtkActor()
         pointActor.SetMapper(pointMapper)
         pointActor.PickableOff()
-        self.vtk_widget.layers[os.path.basename(cloudFileName)] = pointActor
-        addItems = self.dlg.sourceLayerComboBox.additionalItems()
-        addItems.append(" ⛅   " + os.path.basename(cloudFileName))
-        self.dlg.sourceLayerComboBox.setAdditionalItems(addItems)
+
+        # todo: QgsPointCloudLayer will be added with QGIS 3.18
+        # create memory layer to allow handling of point cloud
+        if not cloudId:
+            pcLayer = QgsVectorLayer("PointZ", "⛅ " + os.path.basename(cloudFileName), "memory")
+            # todo: add point to zoom in?
+            QgsExpressionContextUtils.setLayerVariable(pcLayer, 'cloud_path', cloudFileName)
+            VtkPcLayer = VtkLayer(pcLayer)
+            VtkPcLayer.vtkActor = pointActor
+            self.vtk_widget.layers[pcLayer.id()] = VtkPcLayer
+            QgsProject.instance().addMapLayer(pcLayer)
+        else:
+            VtkPcLayer = VtkLayer(QgsProject.instance().mapLayersByName("⛅ " + os.path.basename(cloudFileName))[0])
+            VtkPcLayer.vtkActor = pointActor
+            self.vtk_widget.layers[cloudId] = VtkPcLayer
         self.vtk_widget.renderer.AddActor(pointActor)
         del progress
 
@@ -432,6 +443,7 @@ class Tachy2Gis:
             if layer.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             layer.layer().featuresDeleted.disconnect(self.rerenderVtkLayer)
+            layer.layer().afterRollBack.disconnect(self.rerenderVtkLayer)
 
     # connect existing QgsMapLayers
     def connectMapLayers(self):
@@ -441,6 +453,7 @@ class Tachy2Gis:
             if layer.layer().geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             layer.layer().featuresDeleted.connect(self.rerenderVtkLayer)
+            layer.layer().afterRollBack.connect(self.rerenderVtkLayer)
 
     def connectAddedMapLayers(self, QgsMapLayers):
         for layer in QgsMapLayers:
@@ -449,8 +462,10 @@ class Tachy2Gis:
             if layer.geometryType() == QgsWkbTypes.NullGeometry:
                 continue
             layer.featuresDeleted.connect(self.rerenderVtkLayer)
+            layer.afterRollBack.connect(self.rerenderVtkLayer)
 
     def update_renderer(self):
+        self.vtkLayerCleanUp()
         for layer in QgsProject.instance().layerTreeRoot().findLayers():
             if layer.layer().type() == QgsMapLayerType.RasterLayer:
                 continue
@@ -458,7 +473,10 @@ class Tachy2Gis:
                 continue
             if layer.isVisible():
                 if layer.layer().id() not in self.vtk_widget.layers:
-                    self.vtk_widget.switch_layer(layer.layer())
+                    if "⛅" in layer.layer().name():
+                        self.loadPointCloud(QgsExpressionContextUtils.layerScope(layer.layer()).variable('cloud_path'), layer.layer().id())
+                    else:
+                        self.vtk_widget.switch_layer(layer.layer())
             else:  # remove actor from renderer and vtk_widget.layers{}
                 if layer.layer().id() in self.vtk_widget.layers:
                     if type(self.vtk_widget.layers[layer.layer().id()].vtkActor) == tuple:
@@ -471,6 +489,20 @@ class Tachy2Gis:
         # print("vtk_widget layers:\n", self.vtk_widget.layers)
         self.vtk_widget.refresh_content()
         self.setPickable()
+
+    # remove layers if they are not in the layer legend
+    def vtkLayerCleanUp(self):
+        qgsLayerIds = [layer.layer().id() for layer in QgsProject.instance().layerTreeRoot().findLayers()]
+        vtkDict = self.vtk_widget.layers.copy()
+        for vtkLayerId, actor in vtkDict.items():
+            if vtkLayerId not in qgsLayerIds:
+                if type(self.vtk_widget.layers[vtkLayerId].vtkActor) == tuple:
+                    for a in actor.vtkActor:
+                        self.vtk_widget.renderer.RemoveActor(a)
+                    self.vtk_widget.layers.pop(vtkLayerId)
+                else:
+                    self.vtk_widget.renderer.RemoveActor(self.vtk_widget.layers[vtkLayerId].vtkActor)
+                    self.vtk_widget.layers.pop(vtkLayerId)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
