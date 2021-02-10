@@ -101,7 +101,8 @@ class MixinSingle:
         if "Poly" in self.wkbTypeName:
             vertices.append(vertices[0])
         vertexts = self.make_vertexts(vertices)
-        wkt = '{0}(({1}))'.format(self.wkbTypeName, ', '.join(vertexts))
+        wkt = f"{self.wkbTypeName} (({', '.join(vertexts)}))"
+        print(wkt)
         return wkt
 
 
@@ -110,7 +111,8 @@ class MixinMulti:
         if "Poly" in self.wkbTypeName:
             vertices.append(vertices[0])
         vertexts = self.make_vertexts(vertices)
-        wkt = f"{self.wkbTypeName}((({', '.join(vertexts)})))"
+        wkt = f"{self.wkbTypeName} ((({', '.join(vertexts)})))"
+        print(wkt)
         return wkt
 
 
@@ -135,8 +137,6 @@ class MixinM:
 
 
 class VtkPolyLayer(MixinSingle, Mixin2D, VtkLayer):
-    # TODO: len(vertices) < 3 unhandled
-
     def get_actors(self, colour):
         # poly_data = self.anchor_updater.layer_cache[self.source_layer.id]['poly_data']
         # poly_data = self.extractor.layer_cache[self.source_layer.id()]['poly_data']
