@@ -102,7 +102,6 @@ class MixinSingle:
             vertices.append(vertices[0])
         vertexts = self.make_vertexts(vertices)
         wkt = f"{self.wkbTypeName} (({', '.join(vertexts)}))"
-        print(wkt)
         return wkt
 
 
@@ -112,7 +111,6 @@ class MixinMulti:
             vertices.append(vertices[0])
         vertexts = self.make_vertexts(vertices)
         wkt = f"{self.wkbTypeName} ((({', '.join(vertexts)})))"
-        print(wkt)
         return wkt
 
 
@@ -430,6 +428,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         picked = picker.GetPickPosition()
         picked_actor = picker.GetActor()
         print("vtkPointPicker picked: ", picked)
+        # return if picked point already in vertices
         if picked in self.vertices:
             return
         # return if selection is not an actor

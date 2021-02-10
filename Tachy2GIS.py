@@ -90,9 +90,6 @@ class Tachy2Gis:
     def __init__(self, iface):
         # Save reference to the QGIS interface
         self.iface = iface
-        self.dlg = Tachy2GisDialog()
-        self.render_container_layout = QVBoxLayout()
-        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
@@ -117,16 +114,32 @@ class Tachy2Gis:
         # self.toolbar.setObjectName('Tachy2Gis')
 
         # From here: Own additions
+        self.dlg = Tachy2GisDialog()
+        self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
+        self.render_container_layout = QVBoxLayout()
+        self.markerWidget = vtk.vtkOrientationMarkerWidget()
+        self.vtk_widget = VtkWidget(self.dlg.vtk_frame)
+        self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.render_container_layout.addWidget(self.vtk_widget)
+        self.dlg.vtk_frame.setLayout(self.render_container_layout)
+        # The interactorStyle is instantiated explicitly so it can be connected to
+        # events
+        self.vtk_widget.SetInteractorStyle(self.vtk_mouse_interactor_style)
+        # Setup axes
+        self.markerWidget.SetOrientationMarker(self.vtk_widget.axes)
+        self.markerWidget.SetInteractor(self.vtk_widget.renderer.GetRenderWindow().GetInteractor())
+        self.markerWidget.SetViewport(0.0, 0.0, 0.1, 0.3)
+        self.markerWidget.EnabledOn()
+        self.markerWidget.InteractiveOff()
+
+        self.tachyReader = TachyReader(QSerialPort.Baud9600)
+        self.availability_watchdog = AvailabilityWatchdog()
         self.dlg.zoomModeComboBox.addItems(['Layer',
                                             'Last feature',
                                             'Last 2 features',
                                             'Last 4 features',
                                             'Last 8 features',
                                             ])
-        self.tachyReader = TachyReader(QSerialPort.Baud9600)
-        self.availability_watchdog = AvailabilityWatchdog()
-        self.vtk_mouse_interactor_style = VtkMouseInteractorStyle()
-        self.markerWidget = vtk.vtkOrientationMarkerWidget()
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
         # self.pollingThread.start()
@@ -257,6 +270,14 @@ class Tachy2Gis:
 
     def autozoom(self, index):
         if self.dlg.sourceLayerComboBox.currentLayer() is None:
+            return
+        if "⛅" in self.dlg.sourceLayerComboBox.currentLayer().name():
+            self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
+            self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
+            self.vtk_widget.renderer.ResetCamera(*self.vtk_widget.layers[self.dlg.sourceLayerComboBox.currentLayer().id()].vtkActor.GetBounds())
+            self.vtk_widget.renderer.GetRenderWindow().Render()
+            self.dlg.zoomModeComboBox.setCurrentIndex(0)
             return
         if index == 0:  # Layer
             self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
@@ -518,6 +539,7 @@ class Tachy2Gis:
         # self.dlg.deleteAllButton.clicked.connect(self.clearCanvas)
         # self.dlg.finished.connect(self.mapTool.clear)
         self.dlg.dumpButton.clicked.connect(self.dump)
+        self.dlg.deleteVertexButton.clicked.connect(self.vtk_mouse_interactor_style.remove_selected)
         self.dlg.loadPointCloud.clicked.connect(self.loadPointCloud)
 
         # self.dlg.vertexTableView.setModel(self.vertexList)
@@ -542,23 +564,6 @@ class Tachy2Gis:
         self.tachyReader.lineReceived.connect(self.vertex_received)
         self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
 
-        self.vtk_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.render_container_layout.addWidget(self.vtk_widget)
-        self.dlg.vtk_frame.setLayout(self.render_container_layout)
-        # The interactorStyle is instantiated explicitly so it can be connected to
-        # events
-        self.vtk_widget.SetInteractorStyle(self.vtk_mouse_interactor_style)
-        self.dlg.deleteVertexButton.clicked.connect(self.vtk_mouse_interactor_style.remove_selected)
-        # Setup axes
-        self.markerWidget.SetOrientationMarker(self.vtk_widget.axes)
-        self.markerWidget.SetInteractor(self.vtk_widget.renderer.GetRenderWindow().GetInteractor())
-        self.markerWidget.SetViewport(0.0, 0.0, 0.1, 0.3)
-        self.markerWidget.EnabledOn()
-        self.markerWidget.InteractiveOff()
-
-        self.vtk_widget.Initialize()
-        self.vtk_widget.Start()
-
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         # Connect signals for existing layers
         self.connectMapLayers()
@@ -566,6 +571,9 @@ class Tachy2Gis:
         QgsProject.instance().legendLayersAdded.connect(self.rerenderVtkLayer)
         QgsProject.instance().legendLayersAdded.connect(self.connectAddedMapLayers)
         QgsProject.instance().layersRemoved.connect(self.rerenderVtkLayer)
+
+        self.vtk_widget.Initialize()
+        self.vtk_widget.Start()
 
     def disconnectMapLayers(self):
         for layer in QgsProject.instance().layerTreeRoot().findLayers():
