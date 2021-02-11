@@ -16,6 +16,7 @@ from . import gc_constants
 
 GEOCOM_RESPONSE_IDENTIFIER = "%R1P"
 
+SERIAL_CONNECTED = '🔗'
 SERIAL_AVAILABLE = '🔌'      # Emoji 'electric plug', maybe cannot be displayed
 NO_SERIAL_AVAILABLE = '⚠️'
 
@@ -35,18 +36,20 @@ class AvailabilityWatchdog(QThread):
 
     def poll(self):
         # TODO: better way to find the right COM Port
-        comManList = [i.manufacturer() for i in QSerialPortInfo.availablePorts()]
+        # comManList = [i.manufacturer() for i in QSerialPortInfo.availablePorts()]
         if QSerialPortInfo.availablePorts():  # TODO: Passes if any COM Port is available
-            if 'Prolific' in comManList:
-                self.serial_available.emit(SERIAL_AVAILABLE)
-            else:
-                self.serial_available.emit(NO_SERIAL_AVAILABLE)
+            # if 'Prolific' in comManList:
+            self.serial_available.emit(SERIAL_AVAILABLE)
+        else:
+            self.serial_available.emit(NO_SERIAL_AVAILABLE)
 
     def shutDown(self):
         self.pollingTimer.stop()
 
 
 class TachyReader(QThread):
+    serial_disconnected = pyqtSignal(str)  # start watchdoge again
+    serial_connected = pyqtSignal(str, str)  # stop watchdoge if serial is successfully connected
     lineReceived = pyqtSignal(str)
     mirror_z_received = pyqtSignal()
     geo_com_received = pyqtSignal(str)
@@ -68,6 +71,11 @@ class TachyReader(QThread):
     # TODO: Hook up not working for every tachymeter with gsi_ping
     #       Hook up to right port automatically
     def hook_up(self):
+        # close port if connection is established
+        if self.ser.isOpen():
+            self.ser.close()
+            self.serial_disconnected.emit(NO_SERIAL_AVAILABLE)
+            return
         port_names = [port.portName() for port in QSerialPortInfo.availablePorts()]
         print(port_names)
         beep = GeoCOMRequest(gc.BMM_BeepAlarm)
@@ -81,6 +89,7 @@ class TachyReader(QThread):
             if "Prolific" in port.manufacturer():
                 self.setPort(port.portName())
                 print(f"Connected to '{port.manufacturer()}' at Port: '{port.portName()}'")
+                self.serial_connected.emit(SERIAL_CONNECTED, port.portName())
                 return
         print(f"'Prolific' not found in Port list: {[port.manufacturer() for port in QSerialPortInfo.availablePorts()]}")
         # Show port list and let user choose the port
@@ -94,11 +103,15 @@ class TachyReader(QThread):
             return
         if self.setPort(btPort):
             print(f"Connected to '{btPort}'")
+            self.serial_connected.emit(SERIAL_CONNECTED, btPort)
             return
         else:
             print(f"Could not connect to Port '{btPort}'")
 
     def poll(self):
+        if self.ser.error() == QSerialPort.ResourceError:  # device is unexpectedly removed from the system
+            self.ser.close()
+            self.serial_disconnected.emit(NO_SERIAL_AVAILABLE)
         if self.ser.canReadLine():
             line = bytes(self.ser.readLine())
             line_string = line.decode('ascii')
@@ -156,6 +169,7 @@ class TachyReader(QThread):
     def shutDown(self):
         if self.ser.isOpen():
             self.ser.close()
+            self.serial_disconnected.emit(NO_SERIAL_AVAILABLE)
         self.pollingTimer.stop()
 
     # TODO: crash when opening port without using the ping button

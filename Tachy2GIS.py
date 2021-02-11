@@ -151,6 +151,23 @@ class Tachy2Gis:
         self.dlg.coords.setText(f"{new_vtx}")
         self.vtk_mouse_interactor_style.draw()
 
+    def tachyConnected(self, emit, comName):
+        if self.availability_watchdog.pollingTimer.isActive():
+            self.availability_watchdog.shutDown()
+        self.dlg.tachy_connect_button.setText(emit)
+        self.dlg.tachy_connect_button.setToolTip(f"Verbunden mit {comName}")
+
+    def tachyDisconnected(self, emit):
+        self.tachyReader.pollingTimer.stop()
+        if not self.availability_watchdog.pollingTimer.isActive():
+            self.availability_watchdog.start()
+        self.dlg.tachy_connect_button.setText(emit)
+        self.dlg.tachy_connect_button.setToolTip("Keine Verbindung")
+
+    def tachyAvailable(self, emit):
+        self.dlg.tachy_connect_button.setText(emit)
+        self.dlg.tachy_connect_button.setToolTip("Tachy verbinden")
+
     def dump(self):
         vertices = self.vtk_mouse_interactor_style.vertices
         if len(vertices) == 0:
@@ -169,7 +186,7 @@ class Tachy2Gis:
 
     # Used after dump and layerRemoved/added signal which return the layer ids as list
     # featuresDeleted returns feature ids (int) instead of layer id so activeLayer().id() is used
-    def rerenderVtkLayer(self, layerIds=[0]):
+    def rerenderVtkLayer(self, layerIds=(0,)):
         # todo: featureAdded triggering for every feature added, calling update_renderer multiple times on save
         # featureAdded
         if isinstance(layerIds, int):
@@ -562,7 +579,9 @@ class Tachy2Gis:
         self.dlg.zoomModeComboBox.setCurrentIndex(0)
 
         self.tachyReader.lineReceived.connect(self.vertex_received)
-        self.availability_watchdog.serial_available.connect(self.dlg.tachy_connect_button.setText)
+        self.tachyReader.serial_connected.connect(self.tachyConnected)
+        self.tachyReader.serial_disconnected.connect(self.tachyDisconnected)
+        self.availability_watchdog.serial_available.connect(self.tachyAvailable)
 
         # self.vtk_widget.resizeEvent().connect(self.renderer.resize)
         # Connect signals for existing layers
@@ -779,7 +798,7 @@ class Tachy2Gis:
             self.dlg.setRefHeight.hide()
 
             self.availability_watchdog.start()
-            self.tachyReader.beginListening()
+            # self.tachyReader.beginListening()
             self.setActiveLayer()
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
             self.update_renderer()
