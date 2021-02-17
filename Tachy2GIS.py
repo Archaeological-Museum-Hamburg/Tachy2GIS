@@ -139,6 +139,7 @@ class Tachy2Gis:
                                             'Last 2 features',
                                             'Last 4 features',
                                             'Last 8 features',
+                                            'Off'
                                             ])
         # self.pollingThread = QThread()
         # self.tachyReader.moveToThread(self.pollingThread)
@@ -183,6 +184,8 @@ class Tachy2Gis:
         self.vtk_mouse_interactor_style.draw()
         # remove vtk layer and update renderer
         self.rerenderVtkLayer([targetLayer.id()])
+        # todo: autozoom after dump?
+        self.autozoom(self.dlg.zoomModeComboBox.currentIndex())
 
     # Used after dump and layerRemoved/added signal which return the layer ids as list
     # featuresDeleted returns feature ids (int) instead of layer id so activeLayer().id() is used
@@ -230,6 +233,7 @@ class Tachy2Gis:
         self.tachyReader.lineReceived.disconnect()
         self.dlg.zoomModeComboBox.activated.disconnect(self.autozoom)
         QgsProject.instance().legendLayersAdded.disconnect(self.rerenderVtkLayer)
+        QgsProject.instance().legendLayersAdded.disconnect(self.connectAddedMapLayers)
         QgsProject.instance().layersRemoved.disconnect(self.rerenderVtkLayer)
         self.disconnectMapLayers()
         # self.dlg.request_mirror.clicked.disconnect()
@@ -286,17 +290,21 @@ class Tachy2Gis:
         canvas.refresh()
 
     def autozoom(self, index):
-        if self.dlg.sourceLayerComboBox.currentLayer() is None:
+        if self.dlg.sourceLayerComboBox.currentLayer() == self.dlg.targetLayerComboBox.currentLayer():
+            current_layer = self.dlg.sourceLayerComboBox.currentLayer()
+        else:
+            current_layer = self.dlg.targetLayerComboBox.currentLayer()
+        if current_layer is None:
             return
-        if "⛅" in self.dlg.sourceLayerComboBox.currentLayer().name():
+        if "⛅" in current_layer.name():
             self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
             self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
             self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
-            self.vtk_widget.renderer.ResetCamera(*self.vtk_widget.layers[self.dlg.sourceLayerComboBox.currentLayer().id()].vtkActor.GetBounds())
+            self.vtk_widget.renderer.ResetCamera(*self.vtk_widget.layers[current_layer.id()].vtkActor.GetBounds())
             self.vtk_widget.renderer.GetRenderWindow().Render()
             self.dlg.zoomModeComboBox.setCurrentIndex(0)
             return
-        feats = [f for f in self.dlg.sourceLayerComboBox.currentLayer().getFeatures()]
+        feats = [f for f in current_layer.getFeatures()]
         if index == 0:  # Layer
             if not feats:
                 return
@@ -310,10 +318,10 @@ class Tachy2Gis:
             self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
             self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
             self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
-            self.vtk_widget.renderer.ResetCamera(self.dlg.sourceLayerComboBox.currentLayer().extent().xMinimum(),
-                                                 self.dlg.sourceLayerComboBox.currentLayer().extent().xMaximum(),
-                                                 self.dlg.sourceLayerComboBox.currentLayer().extent().yMinimum(),
-                                                 self.dlg.sourceLayerComboBox.currentLayer().extent().yMaximum(),
+            self.vtk_widget.renderer.ResetCamera(current_layer.extent().xMinimum(),
+                                                 current_layer.extent().xMaximum(),
+                                                 current_layer.extent().yMinimum(),
+                                                 current_layer.extent().yMaximum(),
                                                  min(zVtx), max(zVtx))
             self.vtk_widget.renderer.GetRenderWindow().Render()
 
@@ -440,6 +448,8 @@ class Tachy2Gis:
                                                  min(yMin), max(yMax),
                                                  min(zVtx), max(zVtx))
             self.vtk_widget.renderer.GetRenderWindow().Render()
+        elif index == 5:  # Off
+            return
 
     def set_tachy_button_text(self, txt):
         self.dlg.tachy_connect_button.text = txt
