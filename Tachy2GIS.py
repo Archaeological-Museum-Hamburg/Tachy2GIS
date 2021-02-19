@@ -232,6 +232,7 @@ class Tachy2Gis:
         self.dlg.targetLayerComboBox.layerChanged.disconnect()
         self.tachyReader.lineReceived.disconnect()
         self.dlg.zoomModeComboBox.activated.disconnect(self.autozoom)
+        QgsProject.instance().layerTreeRoot().visibilityChanged.disconnect(self.update_renderer)
         QgsProject.instance().legendLayersAdded.disconnect(self.rerenderVtkLayer)
         QgsProject.instance().legendLayersAdded.disconnect(self.connectAddedMapLayers)
         QgsProject.instance().layersRemoved.disconnect(self.rerenderVtkLayer)
@@ -836,7 +837,7 @@ class Tachy2Gis:
             # self.tachyReader.beginListening()
             self.setActiveLayer()
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
-            self.update_renderer()
             # Start with top view with QGIS map canvas extents
             self.resetVtkCameraTop()
+            self.update_renderer()
             self.dlg.show()

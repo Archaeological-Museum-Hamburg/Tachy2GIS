@@ -48,4 +48,6 @@ class Tachy2GisDialog(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
-        event.accept()
+        self.hide()
+        event.ignore()
+        # event.accept()
