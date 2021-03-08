@@ -125,6 +125,7 @@ class Tachy2Gis:
         # The interactorStyle is instantiated explicitly so it can be connected to
         # events
         self.vtk_widget.SetInteractorStyle(self.vtk_mouse_interactor_style)
+        self.vtk_mouse_interactor_style.SetCurrentRenderer(self.vtk_widget.renderer)
         # Setup axes
         self.markerWidget.SetOrientationMarker(self.vtk_widget.axes)
         self.markerWidget.SetInteractor(self.vtk_widget.renderer.GetRenderWindow().GetInteractor())
@@ -134,7 +135,9 @@ class Tachy2Gis:
 
         self.tachyReader = TachyReader(QSerialPort.Baud9600)
         self.availability_watchdog = AvailabilityWatchdog()
-        self.dlg.zoomModeComboBox.addItems(['Layer',
+        # todo: Order
+        self.dlg.zoomModeComboBox.addItems(['Track last point',
+                                            'Layer',
                                             'Last feature',
                                             'Last 2 features',
                                             'Last 4 features',
@@ -151,6 +154,7 @@ class Tachy2Gis:
         self.vtk_mouse_interactor_style.vertices.append(new_vtx)
         self.dlg.coords.setText(f"{new_vtx}")
         self.vtk_mouse_interactor_style.draw()
+        self.autozoom(0)
 
     def tachyConnected(self, emit, comName):
         if self.availability_watchdog.pollingTimer.isActive():
@@ -224,6 +228,7 @@ class Tachy2Gis:
         self.dlg.logFileEdit.selectionChanged.disconnect()
         self.dlg.dumpButton.clicked.disconnect()
         self.dlg.deleteVertexButton.clicked.disconnect()
+        self.vtk_mouse_interactor_style.trackingCall.trackPoint.disconnect(self.autozoom)
         self.dlg.setRefHeight.returnPressed.disconnect()
         self.dlg.zoomResetButton.clicked.disconnect()
         self.availability_watchdog.serial_available.disconnect()
@@ -303,10 +308,23 @@ class Tachy2Gis:
             self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
             self.vtk_widget.renderer.ResetCamera(*self.vtk_widget.layers[current_layer.id()].vtkActor.GetBounds())
             self.vtk_widget.renderer.GetRenderWindow().Render()
+            self.vtk_widget.renderer.ResetCameraClippingRange()
             self.dlg.zoomModeComboBox.setCurrentIndex(0)
             return
         feats = [f for f in current_layer.getFeatures()]
-        if index == 0:  # Layer
+        if index == 0:  # Track last point
+            if self.dlg.zoomModeComboBox.currentIndex() == 0:
+                if self.vtk_mouse_interactor_style.vertices:
+                    self.vtk_widget.renderer.ResetCamera(self.vtk_mouse_interactor_style.vertices[-1][0],
+                                                         self.vtk_mouse_interactor_style.vertices[-1][0],
+                                                         self.vtk_mouse_interactor_style.vertices[-1][1],
+                                                         self.vtk_mouse_interactor_style.vertices[-1][1],
+                                                         self.vtk_mouse_interactor_style.vertices[-1][2],
+                                                         self.vtk_mouse_interactor_style.vertices[-1][2])
+                    self.vtk_widget.renderer.GetActiveCamera().Zoom(3)
+                    self.vtk_widget.renderer.ResetCameraClippingRange()
+                    self.vtk_widget.renderer.GetRenderWindow().Render()
+        elif index == 1:  # Layer
             if not feats:
                 return
             zVtx = []  # get zMin/zMax
@@ -324,11 +342,12 @@ class Tachy2Gis:
                                                  current_layer.extent().yMinimum(),
                                                  current_layer.extent().yMaximum(),
                                                  min(zVtx), max(zVtx))
+            self.vtk_widget.renderer.ResetCameraClippingRange()
             self.vtk_widget.renderer.GetRenderWindow().Render()
 
-        elif index == 1:  # Last Feature
+        elif index == 2:  # Last Feature
             if not feats:
-                self.dlg.zoomModeComboBox.setCurrentIndex(0)
+                self.dlg.zoomModeComboBox.setCurrentIndex(1)
                 return
             featIds = [f.id() for f in feats]
             if min(featIds) < 0:  # layers in edit buffer have ids below 0
@@ -349,12 +368,13 @@ class Tachy2Gis:
                                                  feats[index].geometry().boundingBox().yMinimum(),
                                                  feats[index].geometry().boundingBox().yMaximum(),
                                                  min(zVtx), max(zVtx))
+            self.vtk_widget.renderer.ResetCameraClippingRange()
             self.vtk_widget.renderer.GetRenderWindow().Render()
 
-        elif index == 2:  # Last 2 Features
+        elif index == 3:  # Last 2 Features
             if not feats or len(feats) < 2:
-                self.dlg.zoomModeComboBox.setCurrentIndex(0)
-                self.autozoom(0)
+                self.dlg.zoomModeComboBox.setCurrentIndex(1)
+                self.autozoom(1)
                 return
             featIds = [f.id() for f in feats]
             featIndices = []
@@ -382,12 +402,13 @@ class Tachy2Gis:
             self.vtk_widget.renderer.ResetCamera(min(xMin), max(xMax),
                                                  min(yMin), max(yMax),
                                                  min(zVtx), max(zVtx))
+            self.vtk_widget.renderer.ResetCameraClippingRange()
             self.vtk_widget.renderer.GetRenderWindow().Render()
 
-        elif index == 3:  # Last 4 Features
+        elif index == 4:  # Last 4 Features
             if not feats or len(feats) < 4:
-                self.dlg.zoomModeComboBox.setCurrentIndex(0)
-                self.autozoom(0)
+                self.dlg.zoomModeComboBox.setCurrentIndex(1)
+                self.autozoom(1)
                 return
             featIds = [f.id() for f in feats]
             featIndices = []
@@ -415,12 +436,13 @@ class Tachy2Gis:
             self.vtk_widget.renderer.ResetCamera(min(xMin), max(xMax),
                                                  min(yMin), max(yMax),
                                                  min(zVtx), max(zVtx))
+            self.vtk_widget.renderer.ResetCameraClippingRange()
             self.vtk_widget.renderer.GetRenderWindow().Render()
 
-        elif index == 4:  # Last 8 Features
+        elif index == 5:  # Last 8 Features
             if not feats or len(feats) < 8:
-                self.dlg.zoomModeComboBox.setCurrentIndex(0)
-                self.autozoom(0)
+                self.dlg.zoomModeComboBox.setCurrentIndex(1)
+                self.autozoom(1)
                 return
             featIds = [f.id() for f in feats]
             featIndices = []
@@ -448,13 +470,15 @@ class Tachy2Gis:
             self.vtk_widget.renderer.ResetCamera(min(xMin), max(xMax),
                                                  min(yMin), max(yMax),
                                                  min(zVtx), max(zVtx))
+            self.vtk_widget.renderer.ResetCameraClippingRange()
             self.vtk_widget.renderer.GetRenderWindow().Render()
-        elif index == 5:  # Off
+        elif index == 6:  # Off
             return
 
     def set_tachy_button_text(self, txt):
         self.dlg.tachy_connect_button.text = txt
 
+    # currently unused
     def resetVtkCamera(self):
         self.vtk_widget.renderer.ResetCamera()
         self.vtk_widget.renderer.GetRenderWindow().Render()
@@ -468,8 +492,10 @@ class Tachy2Gis:
                                              iface.mapCanvas().extent().xMaximum(),
                                              iface.mapCanvas().extent().yMinimum(),
                                              iface.mapCanvas().extent().yMaximum(),
-                                             0, 0)
+                                             self.vtk_widget.renderer.ComputeVisiblePropBounds()[-2],
+                                             self.vtk_widget.renderer.ComputeVisiblePropBounds()[-1])
         self.vtk_widget.renderer.GetActiveCamera().Zoom(3)
+        self.vtk_widget.renderer.ResetCameraClippingRange()
         self.vtk_widget.renderer.GetRenderWindow().Render()
 
     def setCoords(self, coord):
@@ -586,6 +612,7 @@ class Tachy2Gis:
         # self.dlg.request_mirror.clicked.connect(self.tachyReader.request_mirror_z)
         self.tachyReader.mirror_z_received.connect(self.getRefHeight)
         self.dlg.setRefHeight.returnPressed.connect(self.setRefHeight)
+        self.vtk_mouse_interactor_style.trackingCall.trackPoint.connect(self.autozoom)
 
         self.dlg.logFileEdit.selectionChanged.connect(self.setLog)  # TODO: Only works by double clicking/dragging
 
@@ -814,7 +841,6 @@ class Tachy2Gis:
         # remove the toolbar
         # del self.toolbarminec
 
-    # todo: QGIS Crashing when closing t3g undocked and reopening
     def run(self):
         """Run method that performs all the real work"""
 
@@ -838,6 +864,6 @@ class Tachy2Gis:
             self.setActiveLayer()
             self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.dlg)
             # Start with top view with QGIS map canvas extents
-            self.resetVtkCameraTop()
+            self.resetVtkCameraTop()  # todo: resets with 1/-1 bounds because renderer was not yet interacted with
             self.update_renderer()
             self.dlg.show()

@@ -375,7 +375,10 @@ class VtkWidget(QVTKRenderWindowInteractor):
 
         ren = self.renderer
         renWin = self.GetRenderWindow()
-        renWin.PointSmoothingOn()  # Point Cloud test
+        # no visible difference
+        # renWin.PointSmoothingOn()  # Point Cloud test
+        # renWin.PolygonSmoothingOn()
+        # renWin.LineSmoothingOn()
         iren = renWin.GetInteractor()
         iren.SetRenderWindow(renWin)
 
@@ -393,8 +396,14 @@ class VtkWidget(QVTKRenderWindowInteractor):
         renWin.Render()
 
 
+# call on right button down, to track last point
+class trackingCall(QObject):
+    trackPoint = pyqtSignal(int)
+
+
 class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
     def __init__(self, parent=None):
+        self.trackingCall = trackingCall()
         self.AddObserver("RightButtonPressEvent", self.right_button_press_event)
         # self.AddObserver("MouseMoveEvent", self.mouse_move_event)
         # self.AddObserver("RightButtonReleaseEvent", self.right_button_release_event)
@@ -436,6 +445,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             return
         self.vertices.append(picked)
         self.draw()
+        self.trackingCall.trackPoint.emit(0)
 
     def draw(self):
         for actor in self.actors:
@@ -520,6 +530,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
             # working with the select_index allows to work with a wdget that allows selection of vertices.
             del self.vertices[self.select_index]
             self.draw()
+            self.trackingCall.trackPoint.emit(0)
 
     def removeAllVertices(self):
         self.vertices = []
@@ -529,7 +540,7 @@ class VtkMouseInteractorStyle(vtk.vtkInteractorStyleTrackballCamera):
         pass
 
     def right_button_press_event(self, obj, event):
-        print("Right Button pressed")
+        # print("Right Button pressed")
         self.OnRightButtonDown()
         return
 
