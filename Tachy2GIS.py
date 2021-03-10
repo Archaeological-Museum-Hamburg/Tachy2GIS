@@ -302,14 +302,14 @@ class Tachy2Gis:
             current_layer = self.dlg.targetLayerComboBox.currentLayer()
         if current_layer is None:
             return
-        if "⛅" in current_layer.name():
+        if "⛅" in current_layer.name() and index == 1:
             self.vtk_widget.renderer.GetActiveCamera().SetViewUp(0, 1, 0)
             self.vtk_widget.renderer.GetActiveCamera().SetPosition(0, 0, 0)
             self.vtk_widget.renderer.GetActiveCamera().SetFocalPoint(0, 0, -1)
             self.vtk_widget.renderer.ResetCamera(*self.vtk_widget.layers[current_layer.id()].vtkActor.GetBounds())
             self.vtk_widget.renderer.GetRenderWindow().Render()
             self.vtk_widget.renderer.ResetCameraClippingRange()
-            self.dlg.zoomModeComboBox.setCurrentIndex(0)
+            self.dlg.zoomModeComboBox.setCurrentIndex(1)
             return
         feats = [f for f in current_layer.getFeatures()]
         if index == 0:  # Track last point
@@ -348,6 +348,7 @@ class Tachy2Gis:
         elif index == 2:  # Last Feature
             if not feats:
                 self.dlg.zoomModeComboBox.setCurrentIndex(1)
+                self.autozoom(1)
                 return
             featIds = [f.id() for f in feats]
             if min(featIds) < 0:  # layers in edit buffer have ids below 0
@@ -562,6 +563,7 @@ class Tachy2Gis:
             VtkPcLayer.vtkActor = pointActor
             self.vtk_widget.layers[cloudId] = VtkPcLayer
         self.vtk_widget.renderer.AddActor(pointActor)
+        self.vtk_widget.renderer.GetRenderWindow().Render()
         del progress
 
 # TODO: Set colors for active or inactive layers?
