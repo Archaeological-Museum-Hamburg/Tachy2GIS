@@ -81,4 +81,4 @@ The `--site-packages` flag is required to integrate everything else that's requi
 $ pipenv shell
 $ qgis &
 ```
-For 3D-Viewer please note that it dpeends on vtk. Please install vtk via pip to use the plugin.
+For 3D-viewer please note that it depends on vtk. Please install vtk via pip to use the 3D-viewer plugin.
