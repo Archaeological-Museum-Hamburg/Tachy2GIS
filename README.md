@@ -1,3 +1,5 @@
+**NOTE** Further development has been moved to the [GBV](https://github.com/gbv/Tachy2GIS). They also have switched the main branch to the 3D viewer.
+
 **Dependencies:** *Tachy2GIS reqires pyshp to run. If you don't have it already (test this by typing `import shapefile` in a python console), you can get it here: [https://github.com/GeospatialPython/pyshp] or via `pip`. Alternatively you can use pipenv to handle the dependencies for you, see the section **Developer Notes** further down for more info on this.*
 
 **Restrictions:** *Tachy2GIS is at this moment restricted to Leica Totalstations and the Leica GSI 8/16 data format. It has been tested with the TPS400- and TS06-series. The functionality with other systems or formats has not been tested.*
